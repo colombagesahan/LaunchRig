@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Account Locked</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <style>
+        body { background: #000; color: white; font-family: 'Inter', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .lock-box { text-align: center; max-width: 500px; padding: 40px; border: 1px solid #333; border-radius: 10px; background: #0a0a0a; }
+        .hidden { display: none; }
+        h1 { font-size: 3rem; margin: 0; }
+        input { background: #222; border: 1px solid #444; color: white; padding: 15px; width: 80%; margin-top: 20px; font-size: 1.2rem; text-align: center; }
+        button { background: #66fcf1; border: none; padding: 15px 30px; font-weight: bold; cursor: pointer; margin-top: 15px; font-size: 1rem; }
+    </style>
+</head>
+<body>
+
+    <!-- STATE 1: TRIAL EXPIRED -->
+    <div id="trial-box" class="lock-box hidden">
+        <h1 style="color: red;">🔒</h1>
+        <h2>Trial Expired</h2>
+        <p>Your 3-day exploration is over.</p>
+        <p>Enter your <b>AppSumo Lifetime Code</b> to unlock forever.</p>
+        <input id="sumo-code" placeholder="SUMO-XXXX-XXXX">
+        <br>
+        <button onclick="redeem()">Unlock Account</button>
+    </div>
+
+    <!-- STATE 2: BILL DUE -->
+    <div id="bill-box" class="lock-box hidden">
+        <h1 style="color: cyan;">💸</h1>
+        <h2>Monthly Settlement</h2>
+        <p>Your platform is generating revenue! Please pay the platform fee to continue.</p>
+        <h1 id="bill-amount">$0.00</h1>
+        <p style="color:#666;">(30% Revenue Share)</p>
+        <button onclick="payBill()">Pay with Paddle</button>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDpX2VMlYkH7AqzXS0mpQKRoXbELvpE6Ms",
+            authDomain: "launchrig.firebaseapp.com",
+            projectId: "launchrig",
+            storageBucket: "launchrig.firebasestorage.app",
+            messagingSenderId: "995178193380",
+            appId: "1:995178193380:web:ed68979e012b76dc3ca7f1",
+            measurementId: "G-YN3DKL1R4G"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        // 1. DETECT REASON
+        const params = new URLSearchParams(window.location.search);
+        const reason = params.get('reason');
+        const amount = params.get('amount');
+
+        if(reason === 'trial') {
+            document.getElementById('trial-box').classList.remove('hidden');
+        } else if (reason === 'bill') {
+            document.getElementById('bill-amount').innerText = "$" + parseFloat(amount).toFixed(2);
+            document.getElementById('bill-box').classList.remove('hidden');
+            // Inject Paddle
+            const s = document.createElement('script');
+            s.src = "https://cdn.paddle.com/paddle/paddle.js";
+            document.head.appendChild(s);
+        }
+
+        // 2. TRIAL UNLOCK LOGIC
+        async function redeem() {
+            const code = document.getElementById('sumo-code').value.trim();
+            const user = auth.currentUser;
+            
+            // Check Database for Code
+            const snap = await db.collection('appsumo_codes').doc(code).get();
+            
+            if(snap.exists && snap.data().isRedeemed === false) {
+                // VALID CODE
+                // 1. Mark Code Used
+                await db.collection('appsumo_codes').doc(code).update({ isRedeemed: true, redeemedBy: user.uid });
+                // 2. Unlock User
+                await db.collection('active_businesses').doc(user.uid).update({ planStatus: 'lifetime' });
+                alert("Success! Welcome to LaunchRig Lifetime.");
+                window.location.href = "launcher.html";
+            } else {
+                alert("Invalid or Used Code.");
+            }
+        }
+
+        // 3. BILL PAY LOGIC
+        function payBill() {
+            // Paddle Logic Placeholder
+            Paddle.Setup({ vendor: 12345 }); // Replace with your ID
+            Paddle.Checkout.open({
+                product: 12345, // Replace with your $1 Product
+                quantity: Math.ceil(parseFloat(amount)),
+                email: auth.currentUser.email,
+                successCallback: function(data) {
+                    // Unlock logic
+                    const nextDate = new Date();
+                    nextDate.setDate(nextDate.getDate() + 30);
+                    db.collection('active_businesses').doc(auth.currentUser.uid).update({
+                        walletBalance: 0,
+                        billingCycleEnd: nextDate.toISOString()
+                    }).then(() => window.location.href = "launcher.html");
+                }
+            });
+        }
+        
+        auth.onAuthStateChanged(u => { if(!u) window.location.href='login.html'; });
+    </script>
+</body>
+</html>
