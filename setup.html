@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Deploy Platform</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <style>
+        body { background: #050505; color: white; font-family: 'Inter', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .container { width: 400px; background: #121212; padding: 40px; border: 1px solid #333; border-radius: 10px; }
+        input { width: 100%; background: #000; border: 1px solid #333; color: white; padding: 15px; margin-bottom: 20px; border-radius: 4px; }
+        label { display: block; margin-bottom: 8px; color: #888; font-size: 0.9rem; }
+        button { width: 100%; background: #66fcf1; color: black; font-weight: bold; border: none; padding: 15px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2 style="color:#66fcf1; margin-top:0;">Platform Details</h2>
+        <p style="color:#666; margin-bottom:30px;">Customize your white-label instance.</p>
+        
+        <label>Platform Name</label>
+        <input id="b-name" placeholder="e.g. Colombo Furniture">
+        
+        <label>Theme Color</label>
+        <input id="b-color" type="color" value="#ff6d00" style="height:50px; padding:5px;">
+        
+        <label>Logo URL (Direct Link)</label>
+        <input id="b-logo" placeholder="https://...">
+
+        <button onclick="deploy()">LAUNCH NOW 🚀</button>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDpX2VMlYkH7AqzXS0mpQKRoXbELvpE6Ms",
+            authDomain: "launchrig.firebaseapp.com",
+            projectId: "launchrig",
+            storageBucket: "launchrig.firebasestorage.app",
+            messagingSenderId: "995178193380",
+            appId: "1:995178193380:web:ed68979e012b76dc3ca7f1",
+            measurementId: "G-YN3DKL1R4G"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        auth.onAuthStateChanged(user => { if(!user) window.location.href='login.html'; });
+
+        async function deploy() {
+            const name = document.getElementById('b-name').value;
+            const color = document.getElementById('b-color').value;
+            const logo = document.getElementById('b-logo').value || 'https://via.placeholder.com/150';
+            
+            if(!name) return alert("Brand Name Required");
+
+            const user = auth.currentUser;
+            
+            // Update Founder Profile with Deployment Details
+            // Note: We update the EXISTING document created at login
+            await db.collection('active_businesses').doc(user.uid).update({
+                deployedBrand: name,
+                themeColor: color,
+                logo: logo,
+                type: 'furniture'
+            });
+
+            alert("Deployment Successful!");
+            window.location.href = "launcher.html";
+        }
+    </script>
+</body>
+</html>
