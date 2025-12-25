@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verification Center | Admin</title>
+    <link rel="icon" type="image/png" href="icon.png">
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #F5F5F5; padding: 20px; max-width: 800px; margin: 0 auto; color: #3E2723; }
+        h2 { border-bottom: 2px solid #4E342E; padding-bottom: 10px; margin-top: 30px; }
+        
+        .card { background: white; padding: 15px; margin-bottom: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border-left: 5px solid #4E342E; }
+        
+        .btn { padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; color: white; font-weight: bold; margin-right: 5px; }
+        .btn-green { background: #2E7D32; }
+        .btn-red { background: #c62828; }
+        .btn-blue { background: #1976D2; }
+        
+        input { padding: 10px; width: 100%; box-sizing: border-box; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        
+        .badge { padding: 3px 8px; border-radius: 10px; font-size: 0.8rem; background: #eee; }
+        .verified { background: #E8F5E9; color: #2E7D32; }
+        
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+        .img-preview { width: 100%; height: 150px; object-fit: contain; border: 1px solid #ddd; background: #f9f9f9; }
+    </style>
+</head>
+<body>
+
+    <h1><i class="fa-solid fa-user-shield"></i> Admin Panel</h1>
+    <p>Manage verifications for your white-label platform.</p>
+
+    <!-- SECTION 1: PENDING REQUESTS -->
+    <h2>Pending Verifications</h2>
+    <div id="request-list">Loading requests...</div>
+
+    <!-- SECTION 2: MANAGE SELLERS (Unlock Profiles) -->
+    <h2>Manage Sellers & Unlock Profiles</h2>
+    <input type="text" id="search" placeholder="Search by Shop Name..." onkeyup="searchSellers()">
+    <div id="seller-list">Loading sellers...</div>
+
+    <script>
+        // 1. LAUNCHRIG FIREBASE CONFIG
+        const firebaseConfig = {
+            apiKey: "AIzaSyDpX2VMlYkH7AqzXS0mpQKRoXbELvpE6Ms",
+            authDomain: "launchrig.firebaseapp.com",
+            projectId: "launchrig",
+            storageBucket: "launchrig.firebasestorage.app",
+            messagingSenderId: "995178193380",
+            appId: "1:995178193380:web:ed68979e012b76dc3ca7f1",
+            measurementId: "G-YN3DKL1R4G"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        
+        let allSellers = [];
+        let currentFounderId = null;
+
+        // 2. AUTH CHECK (Only Founder can see this)
+        auth.onAuthStateChanged(user => {
+            if(!user) {
+                // Redirect if not logged in (Usually you'd link this from launcher.html)
+                document.body.innerHTML = "<h3>Please login to LaunchRig Dashboard first.</h3>";
+                return;
+            }
+            currentFounderId = user.uid;
+            loadData();
+        });
+
+        function loadData() {
+            // A. LOAD SELLERS (Only belonging to this Founder)
+            db.collection('users')
+                .where('role', '==', 'seller')
+                .where('parentBizId', '==', currentFounderId) // SECURITY: Only my sellers
+                .onSnapshot(snap => {
+                    allSellers = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                    renderSellers(allSellers);
+                    
+                    // Trigger Request Load after we know who our sellers are
+                    loadRequests(); 
+                });
+        }
+
+        // B. LOAD PENDING REQUESTS
+        function loadRequests() {
+            db.collection('admin_requests').orderBy('time', 'desc').onSnapshot(snap => {
+                const list = document.getElementById('request-list');
+                const myRequests = [];
+
+                // Filter logic: Only show request if the UID matches one of MY sellers
+                // (Since admin_requests doesn't have parentBizId by default in old code)
+                snap.forEach(doc => {
+                    const req = doc.data();
+                    const isMySeller = allSellers.some(s => s.id === req.uid);
+                    if(isMySeller) {
+                        myRequests.push({id: doc.id, ...req});
+                    }
+                });
+
+                if(myRequests.length === 0) { list.innerHTML = "<p>No pending requests.</p>"; return; }
+                
+                list.innerHTML = myRequests.map(r => `
+                <div class="card">
+                    <h3>${r.shopName}</h3>
+                    <p>User ID: ${r.uid}</p>
+                    <div class="grid">
+                        <div><b>Doc:</b><br><a href="${r.doc}" target="_blank"><img src="${r.doc}" class="img-preview"></a></div>
+                        <div><b>Slip:</b><br><a href="${r.slip}" target="_blank"><img src="${r.slip}" class="img-preview"></a></div>
+                    </div>
+                    <div style="margin-top:15px;">
+                        <button class="btn btn-green" onclick="verifyUser('${r.id}', '${r.uid}')">Approve & Verify</button>
+                        <button class="btn btn-red" onclick="rejectRequest('${r.id}')">Reject</button>
+                    </div>
+                </div>`).join('');
+            });
+        }
+
+        // C. SEARCH SELLERS
+        function searchSellers() {
+            const q = document.getElementById('search').value.toLowerCase();
+            const filtered = allSellers.filter(s => (s.shopName || '').toLowerCase().includes(q));
+            renderSellers(filtered);
+        }
+
+        function renderSellers(list) {
+            const container = document.getElementById('seller-list');
+            if(list.length === 0) { container.innerHTML = "<p>No sellers found in your platform.</p>"; return; }
+
+            container.innerHTML = list.map(s => `
+                <div class="card" style="border-left-color: ${s.isVerified ? '#2E7D32' : '#FF9800'}">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <h3>${s.shopName || 'No Name'}</h3>
+                            <p>${s.phone1 || 'No Phone'}</p>
+                            ${s.isVerified ? '<span class="badge verified">VERIFIED (LOCKED)</span>' : '<span class="badge">UNVERIFIED (UNLOCKED)</span>'}
+                        </div>
+                        <div>
+                            ${s.isVerified 
+                                ? `<button class="btn btn-red" onclick="unlockProfile('${s.id}')"><i class="fa-solid fa-lock-open"></i> Unlock / Revoke</button>` 
+                                : `<button class="btn btn-blue" onclick="forceVerify('${s.id}')"><i class="fa-solid fa-check"></i> Force Verify</button>`
+                            }
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // --- ACTIONS ---
+
+        // Approve
+        function verifyUser(reqId, uid) {
+            if(!confirm("Approve Verification?")) return;
+            db.collection('users').doc(uid).update({ isVerified: true }).then(() => {
+                db.collection('admin_requests').doc(reqId).delete();
+                alert("User Verified Successfully!");
+            });
+        }
+
+        // Reject
+        function rejectRequest(reqId) {
+            if(confirm("Reject this request?")) {
+                db.collection('admin_requests').doc(reqId).delete();
+            }
+        }
+
+        // Revoke
+        function unlockProfile(uid) {
+            const reason = prompt("Type 'CONFIRM' to remove verification and unlock profile:");
+            if(reason === 'CONFIRM') {
+                db.collection('users').doc(uid).update({ isVerified: false }).then(() => {
+                    alert("Profile Unlocked! The seller can now edit their details.");
+                });
+            }
+        }
+
+        // Manual Verify
+        function forceVerify(uid) {
+            if(confirm("Manually verify this user? This will LOCK their profile.")) {
+                db.collection('users').doc(uid).update({ isVerified: true }).then(() => {
+                    alert("User Verified!");
+                });
+            }
+        }
+
+    </script>
+</body>
+</html>
