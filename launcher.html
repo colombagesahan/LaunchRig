@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Command Center</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        /* CSS VARIABLES & RESET */
+        :root { --bg: #050505; --surface: #121212; --accent: #66fcf1; --text: #e0e0e0; }
+        body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        
+        /* SIDEBAR */
+        .sidebar { width: 250px; background: #0f0f0f; border-right: 1px solid #333; padding: 20px; display: flex; flex-direction: column; }
+        .brand { font-size: 1.2rem; font-weight: 800; color: white; margin-bottom: 40px; display: flex; align-items: center; gap: 10px; }
+        .brand i { color: var(--accent); }
+        .menu-item { padding: 12px; margin-bottom: 5px; cursor: pointer; border-radius: 6px; color: #888; transition: 0.2s; display: flex; align-items: center; gap: 10px; }
+        .menu-item:hover, .menu-item.active { background: #1f1f1f; color: var(--accent); }
+        
+        /* MAIN CONTENT */
+        .main { flex: 1; padding: 40px; overflow-y: auto; }
+        h1 { margin-bottom: 5px; color: white; }
+        .subtitle { color: #666; margin-bottom: 30px; font-size: 0.9rem; }
+
+        /* CARDS & GRIDS */
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .card { background: var(--surface); border: 1px solid #333; padding: 25px; border-radius: 8px; }
+        .card h3 { margin-top: 0; color: white; margin-bottom: 10px; }
+        .stat-val { font-size: 2rem; font-weight: 800; color: var(--accent); margin: 10px 0; }
+        
+        /* FORMS & BUTTONS */
+        input, select { width: 100%; background: #000; border: 1px solid #333; color: white; padding: 12px; margin-top: 5px; margin-bottom: 15px; border-radius: 4px; }
+        .btn { background: var(--accent); color: black; border: none; padding: 10px 20px; font-weight: 700; cursor: pointer; border-radius: 4px; }
+        .btn:hover { background: white; }
+        .status-pill { padding: 4px 10px; border-radius: 50px; font-size: 0.7rem; font-weight: bold; background: #1f2833; color: #888; }
+        .status-pill.trial { color: orange; border: 1px solid orange; }
+        .status-pill.lifetime { color: var(--accent); border: 1px solid var(--accent); background: rgba(102, 252, 241, 0.1); }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <div class="brand"><i class="fa-solid fa-rocket"></i> LaunchRig</div>
+        <div class="menu-item active" onclick="switchTab('dash')"><i class="fa-solid fa-chart-pie"></i> Overview</div>
+        <div class="menu-item" onclick="switchTab('deploy')"><i class="fa-solid fa-plus-circle"></i> New Deployment</div>
+        <div class="menu-item" onclick="switchTab('users')"><i class="fa-solid fa-users"></i> Manage Users</div>
+        <div class="menu-item" onclick="switchTab('config')"><i class="fa-solid fa-cog"></i> Configuration</div>
+        <div class="menu-item" style="margin-top:auto; color:#ff4444;" onclick="firebase.auth().signOut()"><i class="fa-solid fa-sign-out"></i> Logout</div>
+    </div>
+
+    <!-- MAIN AREA -->
+    <div class="main">
+        
+        <!-- HEADER -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+            <div>
+                <h1 id="welcome-msg">Welcome, Founder</h1>
+                <div class="subtitle">Manage your white-label empire.</div>
+            </div>
+            <div id="plan-badge" class="status-pill trial">LOADING STATUS</div>
+        </div>
+
+        <!-- TAB: DASHBOARD -->
+        <div id="tab-dash">
+            <div class="grid">
+                <div class="card">
+                    <h3>Wallet Balance</h3>
+                    <p style="font-size:0.8rem; color:#666;">Current platform fees due</p>
+                    <div class="stat-val" id="wallet-disp">$0.00</div>
+                    <small>Next Bill: <span id="bill-date">...</span></small>
+                </div>
+                <div class="card">
+                    <h3>Active Businesses</h3>
+                    <div class="stat-val" id="biz-count">0</div>
+                    <button class="btn" onclick="switchTab('deploy')">Deploy New</button>
+                </div>
+            </div>
+            
+            <h3 style="margin-top:40px; border-bottom:1px solid #333; padding-bottom:10px;">My Deployed Platforms</h3>
+            <div id="active-deployments" style="margin-top:20px;">Loading...</div>
+        </div>
+
+        <!-- TAB: DEPLOY (BLUEPRINTS) -->
+        <div id="tab-deploy" class="hidden">
+            <h2>Select a Business Blueprint</h2>
+            <div class="grid" id="blueprints-grid">
+                <!-- Injected via JS -->
+            </div>
+        </div>
+
+        <!-- TAB: CONFIG -->
+        <div id="tab-config" class="hidden">
+            <div class="card" style="max-width: 600px;">
+                <h3>Global Pricing & Gateway</h3>
+                <p style="color:#888; font-size:0.9rem; margin-bottom:20px;">How your users pay YOU.</p>
+                
+                <label>Monthly Subscription Fee ($)</label>
+                <input id="conf-price" type="number" placeholder="e.g. 15">
+
+                <label>PayPal Client ID (For Automation)</label>
+                <input id="conf-paypal" placeholder="Paste your PayPal Client ID here">
+                
+                <label>Vendor Free Trial (Days)</label>
+                <input id="conf-days" type="number" value="3">
+
+                <button class="btn" onclick="saveSettings()">Save Configuration</button>
+            </div>
+        </div>
+
+        <!-- TAB: USERS -->
+        <div id="tab-users" class="hidden">
+            <div class="card">
+                <h3>My Vendors</h3>
+                <div id="vendor-list">Loading...</div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDpX2VMlYkH7AqzXS0mpQKRoXbELvpE6Ms",
+            authDomain: "launchrig.firebaseapp.com",
+            projectId: "launchrig",
+            storageBucket: "launchrig.firebasestorage.app",
+            messagingSenderId: "995178193380",
+            appId: "1:995178193380:web:ed68979e012b76dc3ca7f1",
+            measurementId: "G-YN3DKL1R4G"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        let currentUser = null;
+        let founderData = null;
+
+        auth.onAuthStateChanged(async user => {
+            if(!user) return window.location.href = 'login.html';
+            currentUser = user;
+            await loadFounderData();
+            checkSecurityLocks();
+            loadBlueprints();
+            loadMyDeployments();
+        });
+
+        // --- CORE LOGIC ---
+
+        async function loadFounderData() {
+            const doc = await db.collection('active_businesses').doc(currentUser.uid).get();
+            founderData = doc.data();
+            
+            // UI Updates
+            document.getElementById('welcome-msg').innerText = `Welcome, ${currentUser.email}`;
+            document.getElementById('plan-badge').innerText = founderData.planStatus.toUpperCase();
+            document.getElementById('plan-badge').className = `status-pill ${founderData.planStatus}`;
+            
+            document.getElementById('wallet-disp').innerText = "$" + (founderData.walletBalance || 0).toFixed(2);
+            document.getElementById('bill-date').innerText = new Date(founderData.billingCycleEnd).toLocaleDateString();
+
+            // Load Config
+            if(founderData.config) {
+                document.getElementById('conf-price').value = founderData.config.vendorPrice || '';
+                document.getElementById('conf-paypal').value = founderData.config.paypalClientId || '';
+                document.getElementById('conf-days').value = founderData.config.trialDays || 3;
+            }
+        }
+
+        function checkSecurityLocks() {
+            const now = Date.now();
+            
+            // 1. TRIAL LOCK
+            const joined = new Date(founderData.createdAt).getTime();
+            const daysSince = (now - joined) / (1000 * 60 * 60 * 24);
+            if(founderData.planStatus === 'trial' && daysSince > 3) {
+                window.location.href = "locked.html?reason=trial";
+            }
+
+            // 2. BILLING LOCK (Debt > $5 & Date Passed)
+            const billDate = new Date(founderData.billingCycleEnd).getTime();
+            if(now > billDate && founderData.walletBalance > 5) {
+                window.location.href = `locked.html?reason=bill&amount=${founderData.walletBalance}`;
+            }
+        }
+
+        async function loadBlueprints() {
+            // In a real app, fetch from 'business_models' collection.
+            // For MVP, we hardcode the Furniture model available in your folder.
+            const grid = document.getElementById('blueprints-grid');
+            grid.innerHTML = `
+                <div class="card">
+                    <h3 style="color:var(--accent)"><i class="fa-solid fa-couch"></i> Furniture Marketplace</h3>
+                    <p style="color:#888; font-size:0.9rem; margin-bottom:15px;">Multi-vendor home decor platform with shop pages and POS.</p>
+                    <button class="btn" onclick="location.href='setup.html?type=furniture'">Deploy This</button>
+                </div>
+                <div class="card" style="opacity:0.5; border:1px dashed #333;">
+                    <h3><i class="fa-solid fa-carrot"></i> Grocery Delivery</h3>
+                    <p style="color:#888; font-size:0.9rem;">Coming Soon</p>
+                    <button class="btn" disabled>Locked</button>
+                </div>
+            `;
+        }
+
+        async function loadMyDeployments() {
+            // In your current architecture, 1 User = 1 Deployment usually.
+            // But let's check if they have deployed.
+            const div = document.getElementById('active-deployments');
+            if(founderData.deployedBrand) {
+                const link = `${window.location.origin}/furniture/index.html?bid=${currentUser.uid}`;
+                div.innerHTML = `
+                    <div class="card" style="border-left: 3px solid var(--accent);">
+                        <h3>${founderData.deployedBrand}</h3>
+                        <p style="color:#666; font-size:0.8rem;">ID: ${currentUser.uid}</p>
+                        <a href="${link}" target="_blank" style="color:var(--accent); font-weight:bold;">Open Public Site <i class="fa-solid fa-external-link"></i></a>
+                    </div>
+                `;
+                document.getElementById('biz-count').innerText = "1";
+            } else {
+                div.innerHTML = "<p style='color:#666'>No platforms deployed yet.</p>";
+            }
+        }
+
+        async function saveSettings() {
+            const config = {
+                vendorPrice: parseFloat(document.getElementById('conf-price').value),
+                paypalClientId: document.getElementById('conf-paypal').value,
+                trialDays: parseInt(document.getElementById('conf-days').value)
+            };
+            await db.collection('active_businesses').doc(currentUser.uid).update({ config });
+            alert("Configuration Saved!");
+        }
+
+        // TAB SWITCHER
+        function switchTab(tabId) {
+            document.querySelectorAll('.main > div').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById('tab-' + tabId).classList.remove('hidden');
+            event.currentTarget.classList.add('active'); // Highlight menu
+        }
+    </script>
+</body>
+</html>
