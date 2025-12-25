@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LaunchRig | Enterprise White-Label Infrastructure</title>
+    <meta name="description" content="Launch your own SaaS empire. Multi-tenant architecture for non-technical founders.">
+    
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --bg: #050505;
+            --surface: #121212;
+            --border: #333;
+            --accent: #66fcf1;
+            --accent-dim: #45a29e;
+            --text: #e0e0e0;
+            --text-muted: #888;
+        }
+        * { box-sizing: border-box; margin:0; padding:0; outline:none; }
+        body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        a { text-decoration: none; color: inherit; transition: 0.3s; }
+
+        /* NAV */
+        nav {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 20px 5%; position: fixed; width: 100%; top: 0; z-index: 1000;
+            background: rgba(5, 5, 5, 0.9); backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(102, 252, 241, 0.1);
+        }
+        .logo { font-size: 1.4rem; font-weight: 800; color: white; display: flex; align-items: center; gap: 8px; }
+        .logo i { color: var(--accent); }
+        .btn-glow {
+            background: var(--accent); color: #000; padding: 10px 24px;
+            border-radius: 4px; font-weight: 700; text-transform: uppercase;
+            font-size: 0.85rem; letter-spacing: 0.5px;
+            box-shadow: 0 0 15px rgba(102, 252, 241, 0.4);
+        }
+        .btn-glow:hover { background: white; box-shadow: 0 0 25px var(--accent); }
+
+        /* HERO */
+        .hero {
+            height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center;
+            text-align: center; padding: 0 20px;
+            background: radial-gradient(circle at 50% 50%, #1a1a1a 0%, #050505 80%);
+        }
+        .hero-tag {
+            border: 1px solid var(--accent); color: var(--accent); padding: 6px 16px;
+            border-radius: 50px; font-size: 0.75rem; font-weight: bold; margin-bottom: 25px;
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+        .hero h1 {
+            font-size: 4.5rem; line-height: 1.1; margin-bottom: 25px; color: white; letter-spacing: -2px;
+        }
+        .hero h1 span { color: var(--accent); }
+        .hero p {
+            font-size: 1.25rem; color: var(--text-muted); max-width: 600px; margin-bottom: 40px; line-height: 1.6;
+        }
+
+        /* GRID */
+        .grid-section { padding: 80px 5%; }
+        .section-header { text-align: center; margin-bottom: 60px; }
+        .section-header h2 { font-size: 2.5rem; color: white; margin-bottom: 10px; }
+        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; }
+        
+        .feature-card {
+            background: var(--surface); padding: 40px; border-radius: 12px;
+            border: 1px solid var(--border); transition: 0.3s;
+        }
+        .feature-card:hover { border-color: var(--accent); transform: translateY(-5px); }
+        .feature-card i { font-size: 2rem; color: var(--accent); margin-bottom: 20px; }
+        .feature-card h3 { color: white; font-size: 1.2rem; margin-bottom: 10px; }
+        .feature-card p { color: var(--text-muted); line-height: 1.5; font-size: 0.95rem; }
+
+        /* PRICING */
+        .pricing-container {
+            max-width: 900px; margin: 0 auto; background: #0f0f0f;
+            border: 1px solid #333; border-radius: 20px; overflow: hidden;
+            display: flex; flex-direction: row; box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+        .pricing-left { padding: 50px; flex: 1; }
+        .pricing-right { 
+            background: linear-gradient(135deg, #1f2833, #0b0c10); 
+            padding: 50px; flex: 0.8; border-left: 1px solid #333; 
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+        }
+        .check-list li { margin-bottom: 15px; color: #ccc; list-style: none; display: flex; align-items: center; gap: 10px; }
+        .check-list i { color: var(--accent); }
+        .price-tag { font-size: 3.5rem; font-weight: 800; color: white; margin: 10px 0; }
+
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2.8rem; }
+            .pricing-container { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div class="logo"><i class="fa-solid fa-rocket"></i> LaunchRig</div>
+        <div>
+            <a href="login.html" style="margin-right: 20px; color:#fff; font-weight:600;">Login</a>
+            <a href="login.html" class="btn-glow">Start Free Trial</a>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <div class="hero-tag">V 1.0 Stable Release</div>
+        <h1>Your Business Empire <br><span>Starts Here</span></h1>
+        <p>The enterprise-grade infrastructure to launch white-label marketplaces, SaaS platforms, and digital stores in under 60 seconds.</p>
+        <a href="login.html" class="btn-glow" style="padding: 18px 40px; font-size: 1rem;">Launch Console</a>
+        <p style="margin-top: 20px; font-size: 0.85rem; color: #555;">No Credit Card Required • 3-Day Enterprise Trial</p>
+    </header>
+
+    <section class="grid-section">
+        <div class="section-header">
+            <h2>The LaunchRig Ecosystem</h2>
+            <p>We provide the engine. You provide the brand.</p>
+        </div>
+        <div class="cards">
+            <div class="feature-card">
+                <i class="fa-solid fa-fingerprint"></i>
+                <h3>100% White Label</h3>
+                <p>Deploy under your brand name, your colors, and your rules. Your customers will never know LaunchRig exists.</p>
+            </div>
+            <div class="feature-card">
+                <i class="fa-solid fa-hand-holding-dollar"></i>
+                <h3>Automated Revenue</h3>
+                <p>Set your own subscription prices for your users. Our system handles the gating and management.</p>
+            </div>
+            <div class="feature-card">
+                <i class="fa-solid fa-code-branch"></i>
+                <h3>Multi-Model Support</h3>
+                <p>Start with a Furniture Marketplace today. Add Grocery or Fashion models tomorrow with one click.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="grid-section">
+        <div class="pricing-container">
+            <div class="pricing-left">
+                <h3 style="color:var(--accent); margin-bottom:10px;">APPSUMO LIFETIME DEAL</h3>
+                <h2 style="color:white; font-size:2rem; margin-bottom:20px;">Founder License</h2>
+                <ul class="check-list">
+                    <li><i class="fa-solid fa-check-circle"></i> Unlimited Deployments</li>
+                    <li><i class="fa-solid fa-check-circle"></i> Access to 'Furniture' Blueprint</li>
+                    <li><i class="fa-solid fa-check-circle"></i> Stripe/PayPal Integration</li>
+                    <li><i class="fa-solid fa-check-circle"></i> 30% RevShare Model (Pay as you earn)</li>
+                </ul>
+            </div>
+            <div class="pricing-right">
+                <div class="price-tag">$19</div>
+                <span style="color:#666; margin-bottom: 20px;">One-time payment</span>
+                <a href="login.html" class="btn-glow" style="width:100%; text-align:center;">Get Lifetime Access</a>
+            </div>
+        </div>
+    </section>
+
+    <footer style="text-align: center; padding: 40px; color: #444; font-size: 0.9rem;">
+        &copy; 2025 LaunchRig Platform. Built for Scalability.
+    </footer>
+
+</body>
+</html>
