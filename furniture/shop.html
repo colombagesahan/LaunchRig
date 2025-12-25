@@ -2,90 +2,389 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shop</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>FurnicoHub Shop</title>
+    <meta name="theme-color" content="#FF6D00">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;600&display=swap" rel="stylesheet">
-    <!-- Firebase -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+
     <style>
-        :root { --primary: #FF6D00; }
-        body { font-family: 'Poppins', sans-serif; margin:0; padding:0; background: #f9f9f9; }
-        .hero { background: white; padding: 40px; text-align: center; border-bottom: 1px solid #eee; }
-        .hero img { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px; padding: 20px; }
-        .card { background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .card img { width: 100%; height: 160px; object-fit: cover; }
-        .info { padding: 10px; }
-        .btn { background: var(--primary); color: white; border: none; padding: 8px; width: 100%; border-radius: 5px; cursor: pointer; }
+        :root { 
+            --primary: #FF6D00; 
+            --primary-dark: #E65100; 
+            --secondary: #3E2723; 
+            --bg: #FFF3E0; 
+            --surface: #FFFFFF; 
+            --font: 'Poppins', sans-serif;
+            --radius: 16px;
+            --green-verified: #2E7D32; 
+            --gold-star: #FFC107; 
+            --red-alert: #C62828; 
+        }
+        * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
+        body { margin: 0; font-family: var(--font); background: var(--bg); color: var(--secondary); padding-bottom: 80px; overflow-x: hidden; }
+
+        /* HEADER & HERO */
+        .hero { 
+            background: linear-gradient(180deg, #FFFFFF 0%, #FFF8E1 100%); 
+            padding: 40px 20px 20px; text-align: center; 
+            border-radius: 0 0 30px 30px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); 
+            margin-bottom: 20px;
+        }
+        .hero img.logo { 
+            width: 120px; height: 120px; border-radius: 50%; 
+            border: 4px solid var(--primary); object-fit: cover; 
+            background: white; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .shop-name { font-size: 1.8rem; font-weight: 800; color: var(--primary); margin: 10px 0 5px; line-height: 1.2; }
+        .shop-addr { color: #5D4037; font-size: 0.9rem; margin: 5px 0 10px; padding: 0 10px; display: flex; justify-content: center; align-items: center; gap: 8px; }
+        .shop-addr i { color: var(--primary); }
+
+        .verified-badge {
+            background: var(--green-verified); color: white; padding: 4px 12px; border-radius: 20px; 
+            font-size: 0.8rem; font-weight: bold; display: inline-flex; align-items: center; gap: 5px;
+            margin-top: 5px; text-transform: uppercase;
+        }
+        .contact-info { margin: 20px 0; font-size: 0.95rem; color: #4E342E; font-weight: 600; text-align: center;}
+        .contact-info-item { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px; }
+        .contact-info-item i { color: var(--primary); font-size: 1.1rem; width: 25px; text-align: center;}
+        
+        .hero-btn { 
+            background: var(--secondary); color: white; padding: 12px 30px; border-radius: 50px; 
+            border: none; font-weight: 600; margin-top: 20px; cursor: pointer; display: inline-block;
+            font-size: 1rem; transition: all 0.3s ease; box-shadow: 0 5px 15px rgba(62, 39, 35, 0.2);
+        }
+        .hero-btn:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(62, 39, 35, 0.3); }
+
+        /* CONTENT SECTIONS */
+        .section-container { padding: 0 20px; margin-top: 20px; }
+        .cat-title { 
+            margin: 30px 0 10px; font-size: 1.3rem; font-weight: 700; 
+            color: var(--secondary); border-bottom: 2px solid #FFE0B2; padding-bottom: 5px;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .cat-title::before { content: ''; display: block; width: 25px; height: 2px; background: var(--primary); }
+        .cat-title::after { content: ''; display: block; flex: 1; height: 2px; background: #FFE0B2; }
+        
+        .prod-grid { display: grid; gap: 15px; padding: 0; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); margin-bottom: 30px; }
+        
+        .card { 
+            background: white; border-radius: var(--radius); overflow: hidden; 
+            box-shadow: 0 5px 15px rgba(62, 39, 35, 0.08); cursor: pointer; transition: all 0.2s ease;
+            border: 1px solid rgba(255, 230, 199, 0.5);
+        }
+        .card:hover { transform: translateY(-5px); box-shadow: 0 8px 20px rgba(62, 39, 35, 0.12); }
+        .card img { width: 100%; height: 160px; object-fit: cover; background: #eee; }
+        .card-info { padding: 12px; }
+        .prod-name { font-weight: 700; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--secondary); }
+        .prod-promo { color: #E65100; font-size: 0.75rem; font-weight: 600; margin-bottom: 4px; min-height: 18px; }
+        .prod-price { color: var(--primary); font-weight: 800; font-size: 1.1rem; }
+
+        /* BUTTONS & MODALS */
+        .btn { 
+            background: var(--primary); color: white; border: none; padding: 10px 20px; width: 100%; 
+            border-radius: 10px; cursor: pointer; font-weight: 600; margin-top: 10px; 
+            transition: all 0.3s ease;
+        }
+        .btn-green { background: #2E7D32; }
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(62, 39, 35, 0.8); z-index: 2000; display: none; justify-content: center; align-items: flex-end; backdrop-filter: blur(5px); }
+        .modal-content { background: white; width: 100%; max-width: 600px; padding: 25px; border-radius: 25px 25px 0 0; max-height: 90vh; overflow-y: auto; position: relative; }
+        .modal .close-btn { position: absolute; top: 15px; right: 15px; font-size: 1.5rem; color: #777; cursor: pointer; }
+
+        /* REVIEWS */
+        .review-card { background: #FFF8E1; padding: 15px; border-radius: 12px; margin-bottom: 10px; border-left: 5px solid var(--primary); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .review-card .stars { color: var(--gold-star); font-size: 1.1rem; margin-top: 5px;}
+        .review-card p { font-style: italic; color: #5D4037; margin: 10px 0; line-height: 1.5;}
+        .review-form { background: #FAFAFA; padding: 20px; border-radius: var(--radius); margin-top: 20px; border: 1px dashed #FFE0B2; }
+        
+        /* FORM & MAP */
+        .contact-form { background: white; padding: 25px; margin: 0 20px; border-radius: var(--radius); box-shadow: 0 5px 20px rgba(0,0,0,0.05); }
+        .contact-form h3 { color: var(--primary); }
+        .form-input { width: 100%; padding: 12px; margin-bottom: 10px; border: 2px solid #FFE0B2; border-radius: 10px; font-family: var(--font); background: #FAFAFA; }
+        .map-container { margin: 20px; }
+        .map-iframe { width: 100%; height: 300px; border: 0; border-radius: var(--radius); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+
+        /* FOOTER */
+        footer { 
+            background: var(--secondary); color: #D7CCC8; padding: 40px 20px; text-align: center; margin-top: 50px; border-top-left-radius: 40px; border-top-right-radius: 40px;
+        }
+        footer .footer-logo { font-size: 1.8rem; font-weight: 800; color: var(--primary-light); margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        footer .footer-logo img { height: 40px; }
+        footer .social-links a { color: white; font-size: 1.5rem; margin: 0 10px; transition: color 0.3s ease; }
+        
+        /* FLOATING WHATSAPP */
+        .float-wa { 
+            position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px; 
+            background: #25D366; color: white; border-radius: 50%; 
+            display: flex; justify-content: center; align-items: center; 
+            font-size: 2rem; box-shadow: 0 5px 15px rgba(0,0,0,0.3); z-index: 1000;
+        }
+        .float-wa.pulse { animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+
+        @media (max-width: 350px) {
+            .hero { padding: 30px 10px; }
+            .shop-name { font-size: 1.4rem; }
+            .prod-grid { grid-template-columns: 1fr; gap: 10px; }
+            .float-wa { width: 50px; height: 50px; font-size: 1.5rem; bottom: 15px; right: 15px;}
+        }
     </style>
 </head>
 <body>
 
-    <div class="hero">
-        <img id="s-logo" src="https://via.placeholder.com/100">
-        <h1 id="s-name">Loading...</h1>
-        <p id="s-addr">...</p>
+<div id="app">
+    <div style="text-align:center; padding:50px; font-size:1.2rem; color:var(--primary);">
+        <i class="fa-solid fa-spinner fa-spin"></i> Loading Shop...
     </div>
+</div>
 
-    <div class="grid" id="prod-grid">Loading Products...</div>
+<!-- Product Detail Modal -->
+<div id="prod-modal" class="modal">
+    <div class="modal-content" id="pm-content">
+        <i class="fa-solid fa-times close-btn" onclick="closeModal()"></i>
+        <img id="m-img" style="width:100%; height:250px; object-fit:cover; border-radius:15px; margin-bottom:15px;" onerror="this.src='https://via.placeholder.com/250/FF6D00/FFFFFF?text=No+Image'">
+        <h2 id="m-title" style="margin:0; color:var(--secondary);"></h2>
+        <h3 id="m-price" style="color:var(--primary); margin:5px 0 15px;"></h3>
+        <p id="m-desc" style="color:#555; line-height:1.6; margin-bottom:20px;"></p>
+        <button class="btn" onclick="addToInquiryFromModal()"><i class="fa-solid fa-cart-plus"></i> Add to Inquiry List</button>
+        
+        <div style="margin-top:30px; border-top:1px solid #FFE0B2; padding-top:15px;">
+            <b style="color:var(--primary);">You might also like:</b>
+            <div id="m-upsell" style="display:flex; gap:10px; overflow-x:auto; margin-top:10px;"></div>
+        </div>
+    </div>
+</div>
 
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyDpX2VMlYkH7AqzXS0mpQKRoXbELvpE6Ms",
-            authDomain: "launchrig.firebaseapp.com",
-            projectId: "launchrig",
-            storageBucket: "launchrig.firebasestorage.app",
-            messagingSenderId: "995178193380",
-            appId: "1:995178193380:web:ed68979e012b76dc3ca7f1",
-            measurementId: "G-YN3DKL1R4G"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
+<!-- Inquiry List Modal (Cart) -->
+<div id="inquiry-modal" class="modal">
+    <div class="modal-content">
+        <i class="fa-solid fa-times close-btn" onclick="document.getElementById('inquiry-modal').style.display='none'"></i>
+        <h3 style="color:var(--primary);">Your Inquiry List</h3>
+        <p style="color:#666; margin-bottom:15px;">Review your selected items and send your inquiry directly to the seller via WhatsApp.</p>
+        <div id="cart-list" style="margin-bottom:15px;"></div>
+        <div style="font-weight:800; text-align:right; margin-bottom:15px; font-size:1.1rem;">Total Est: <span style="color:var(--primary);">Rs. <span id="cart-total">0</span></span></div>
+        <input id="c-name" class="form-input" placeholder="Your Name *">
+        <input id="c-ph" class="form-input" placeholder="Your Phone Number *">
+        <input id="c-wa" class="form-input" placeholder="Your WhatsApp Number (e.g., 94771234567) *">
+        <button class="btn btn-green" onclick="sendWhatsAppOrder()"><i class="fa-brands fa-whatsapp"></i> Send Inquiry via WhatsApp</button>
+    </div>
+</div>
 
-        const params = new URLSearchParams(window.location.search);
-        const sellerId = params.get('id');
-        const bizId = params.get('bid');
+<a id="wa-link" href="#" target="_blank" class="float-wa"><i class="fa-brands fa-whatsapp"></i></a>
 
-        // Apply Founder Branding
-        if(bizId) {
-            db.collection('active_businesses').doc(bizId).get().then(doc => {
-                if(doc.exists && doc.data().themeColor) {
-                    document.documentElement.style.setProperty('--primary', doc.data().themeColor);
-                }
-            });
-        }
+<script>
+    const firebaseConfig = { apiKey: "AIzaSyDpX2VMlYkH7AqzXS0mpQKRoXbELvpE6Ms", authDomain: "launchrig.firebaseapp.com", projectId: "launchrig", storageBucket: "launchrig.firebasestorage.app", messagingSenderId: "995178193380", appId: "1:995178193380:web:ed68979e012b76dc3ca7f1", measurementId: "G-YN3DKL1R4G" };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-        if(sellerId) {
-            db.collection('users').doc(sellerId).onSnapshot(doc => {
+    const params = new URLSearchParams(window.location.search);
+    const uid = params.get('id');
+    const bizId = params.get('bid'); // LaunchRig Logic
+    
+    let shop = {};
+    let reviews = [];
+    let cart = [];
+    let currentProd = null;
+
+    // --- LAUNCHRIG BRANDING ---
+    if(bizId) {
+        db.collection('active_businesses').doc(bizId).get().then(doc => {
+            if(doc.exists) {
                 const d = doc.data();
-                document.title = d.shopName;
-                document.getElementById('s-name').innerText = d.shopName;
-                document.getElementById('s-addr').innerText = d.address || '';
-                if(d.logo) document.getElementById('s-logo').src = d.logo;
+                if(d.themeColor) document.documentElement.style.setProperty('--primary', d.themeColor);
+            }
+        });
+    }
 
-                const grid = document.getElementById('prod-grid');
-                grid.innerHTML = (d.products || []).map(p => `
-                    <div class="card">
-                        <img src="${p.images[0]}" onerror="this.src='https://via.placeholder.com/150'">
-                        <div class="info">
-                            <b>${p.name}</b><br>
-                            <span style="color:var(--primary)">Rs. ${p.price}</span>
-                            <button class="btn" onclick="buy('${p.name}', ${p.price})">Order on WhatsApp</button>
-                        </div>
-                    </div>
-                `).join('');
-                
-                window.waPhone = d.whatsapp; // Store for global use
+    if(!uid) document.getElementById('app').innerHTML = "<p style='text-align:center; padding:50px; color:var(--red-alert);'>Shop ID missing.</p>";
+    else {
+        db.collection('users').doc(uid).onSnapshot(doc => {
+            if(!doc.exists) { document.getElementById('app').innerHTML = "<p style='text-align:center;'>Shop not found.</p>"; return; }
+            shop = doc.data();
+            renderShop();
+            document.getElementById('wa-link').href = `https://wa.me/${shop.whatsapp}`;
+        });
+
+        db.collection('users').doc(uid).collection('reviews').where('status','==','published').onSnapshot(snap => {
+            reviews = snap.docs.map(d => ({id:d.id, ...d.data()}));
+            renderReviews();
+        });
+    }
+
+    function renderShop() {
+        const app = document.getElementById('app');
+        const cats = [...new Set((shop.products||[]).map(p => p.category))];
+        
+        // CHECK SCHEDULE
+        const now = new Date();
+        const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' });
+        const currentTime = now.toTimeString().slice(0, 5);
+        const schedule = shop.schedule ? shop.schedule[currentDay] : null;
+        let status = 'Currently Closed (Scheduled)';
+        if (shop.emergencyClose) status = 'Currently Closed (Emergency)';
+        else if (schedule && schedule.open && currentTime >= schedule.start && currentTime <= schedule.end) {
+            status = `<span style="color:var(--green-verified); font-weight:bold;">Open until ${schedule.end}</span>`;
+        }
+
+        let html = `
+            <div class="hero" style="background-color: ${shop.themeColor || 'white'};">
+                <img src="${shop.logo || 'logo.png'}" class="logo" onerror="this.src='https://via.placeholder.com/120'">
+                <h1 class="shop-name">${shop.shopName || 'Untitled Shop'}</h1>
+                ${shop.isVerified ? '<div class="verified-badge"><i class="fa-solid fa-circle-check"></i> Verified Seller</div>' : ''}
+                <div class="shop-addr"><i class="fa-solid fa-location-dot"></i> ${shop.address || 'No address'}</div>
+                <div class="contact-info">
+                    <div class="contact-info-item"><i class="fa-solid fa-phone"></i> ${shop.phone1 || '-'}</div>
+                    <div class="contact-info-item"><i class="fa-brands fa-whatsapp"></i> +${shop.whatsapp || '-'}</div>
+                </div>
+                ${shop.heroText ? `<p style="font-style:italic; color:#777; margin:15px 0;">"${shop.heroText}"</p>` : ''}
+                <button class="hero-btn" onclick="scrollToContact()"><i class="fa-solid fa-envelope"></i> Contact Us</button>
+            </div>
+            <p style="text-align:center; font-size:0.9rem; color:#666; margin-top:10px;">${status}</p>
+        `;
+
+        if (shop.products && shop.products.length > 0) {
+            cats.forEach(c => {
+                html += `<div class="section-container"><h3 class="cat-title">${c}</h3><div class="prod-grid">`;
+                shop.products.filter(p => p.category === c).forEach(p => {
+                    const pStr = JSON.stringify(p).replace(/"/g, '&quot;');
+                    html += `
+                        <div class="card" onclick="openProd(${pStr})">
+                            <img src="${p.images[0]}" onerror="this.src='https://via.placeholder.com/150'">
+                            <div class="card-info">
+                                <div class="prod-promo">${p.promoText || '&nbsp;'}</div>
+                                <div class="prod-name">${p.name}</div>
+                                <div class="prod-price">Rs. ${parseInt(p.price).toLocaleString()}</div>
+                                <button class="btn" onclick="event.stopPropagation(); addToInquiry(${pStr});"><i class="fa-solid fa-cart-plus"></i> Add to Inquiry</button>
+                            </div>
+                        </div>`;
+                });
+                html += `</div></div>`;
             });
+        } else {
+            html += `<div class="section-container"><p style="text-align:center; padding:50px; color:#777;">No products listed.</p></div>`;
         }
 
-        function buy(name, price) {
-            const phone = window.waPhone || "94770000000";
-            const text = `Hi, I want to buy ${name} for Rs. ${price}`;
-            window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
+        html += `
+            <div class="section-container" style="background:white; padding:25px; margin-top:20px; border-radius:var(--radius);">
+                <h3 style="color:var(--secondary)">Customer Reviews</h3>
+                <div id="reviews-list"></div>
+                <div class="review-form">
+                    <h4>Write a Review</h4>
+                    <input id="r-name" class="form-input" placeholder="Your Name *" required>
+                    <textarea id="r-text" class="form-input" placeholder="Review *" rows="3"></textarea>
+                    <select id="r-stars" class="form-input"><option value="5">⭐⭐⭐⭐⭐</option><option value="4">⭐⭐⭐⭐</option><option value="3">⭐⭐⭐</option></select>
+                    <button class="btn" onclick="submitReview()">Submit Review</button>
+                </div>
+            </div>
+            <div id="contact-area" class="contact-form contact-section">
+                <h3>Contact Us Directly</h3>
+                <input id="msg-name" class="form-input" placeholder="Name">
+                <input id="msg-ph" class="form-input" placeholder="Phone">
+                <input id="msg-wa" class="form-input" placeholder="WhatsApp (No +)">
+                <textarea id="msg-text" class="form-input" rows="4" placeholder="Message"></textarea>
+                <button class="btn" onclick="submitContact()">Send Message</button>
+            </div>
+            <div class="map-container contact-section">
+                <h3>Location</h3>
+                <iframe class="map-iframe" src="https://maps.google.com/maps?q=${encodeURIComponent(shop.address||'')}&t=&z=13&ie=UTF8&iwloc=&output=embed"></iframe>
+            </div>
+            <footer>
+                <div class="footer-logo"><img src="icon.png"> FurnicoHub</div>
+                <p>${shop.shopName}</p>
+                <p>&copy; ${new Date().getFullYear()} All rights reserved.</p>
+            </footer>
+        `;
+        app.innerHTML = html;
+        renderReviewsList();
+    }
+
+    function renderReviewsList() {
+        const div = document.getElementById('reviews-list');
+        if(!div) return;
+        div.innerHTML = reviews.length ? reviews.map(r => `<div class="review-card"><b>${r.name}</b> <span class="stars">${'★'.repeat(r.stars)}</span><p>"${r.text}"</p></div>`).join('') : '<p>No reviews yet.</p>';
+    }
+
+    // --- PRODUCT LOGIC ---
+    function openProd(item) {
+        currentProd = item;
+        document.getElementById('m-img').src = item.images[0];
+        document.getElementById('m-title').innerText = item.name;
+        document.getElementById('m-price').innerText = "Rs. " + parseInt(item.price).toLocaleString();
+        document.getElementById('m-desc').innerText = item.desc || "No description.";
+        
+        const others = (shop.products || []).filter(p => p.category === item.category && p.id !== item.id);
+        const upsellDiv = document.getElementById('m-upsell');
+        if(upsellDiv) upsellDiv.innerHTML = others.slice(0,4).map(p => `
+            <div style="min-width:100px; text-align:center; cursor:pointer;" onclick='openProd(${JSON.stringify(p).replace(/"/g, '&quot;')})'>
+                <img src="${p.images[0]}" style="width:100px; height:80px; object-fit:cover; border-radius:8px;">
+                <div style="font-size:0.75rem; font-weight:bold;">${p.name}</div>
+            </div>`).join('');
+        
+        document.getElementById('prod-modal').style.display = 'flex';
+    }
+
+    function closeModal() { document.getElementById('prod-modal').style.display = 'none'; }
+    function addToInquiry(product) { cart.push(product); alert("Added to Inquiry!"); event.stopPropagation(); }
+    function addToInquiryFromModal() { if(currentProd) { cart.push(currentProd); closeModal(); alert("Added!"); } }
+
+    document.getElementById('wa-link').onclick = function(e) {
+        if(cart.length > 0) {
+            e.preventDefault();
+            document.getElementById('inquiry-modal').style.display = 'flex';
+            let total = 0;
+            document.getElementById('cart-list').innerHTML = cart.map(i => { total+=parseInt(i.price); return `<div style="display:flex; justify-content:space-between; border-bottom:1px solid #eee; padding:5px;"><span>${i.name}</span><b>Rs.${i.price}</b></div>`; }).join('');
+            document.getElementById('cart-total').innerText = total.toLocaleString();
         }
-    </script>
+    }
+
+    // --- LAUNCHRIG MONEY LOGIC ---
+    async function sendWhatsAppOrder() {
+        const name = document.getElementById('c-name').value;
+        const phone = document.getElementById('c-ph').value;
+        const wa = document.getElementById('c-wa').value;
+        if(!name || !phone || !wa) return alert("Fill all fields");
+
+        let msg = `New Inquiry for ${shop.shopName}:\nName: ${name}\nPhone: ${phone}\nItems:\n`;
+        let total = 0;
+        cart.forEach(i => { msg += `- ${i.name} (${i.price})\n`; total += parseInt(i.price); });
+        msg += `Total: Rs. ${total}`;
+
+        // 1. RECORD TRANSACTION FOR FOUNDER (If bizId present)
+        if(bizId) {
+            // Note: In strict mode we track sales here. For MVP, we just unlock based on subscription
+            // so this part is optional but good for analytics.
+        }
+
+        // 2. OPEN WHATSAPP
+        window.open(`https://wa.me/${shop.whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
+        document.getElementById('inquiry-modal').style.display = 'none';
+        cart = [];
+    }
+
+    function submitReview() {
+        const name = document.getElementById('r-name').value;
+        const text = document.getElementById('r-text').value;
+        const stars = document.getElementById('r-stars').value;
+        if(!name) return alert("Name required");
+        db.collection('users').doc(uid).collection('reviews').add({ name, text, stars: parseInt(stars), status: 'pending', time: new Date().toISOString() })
+        .then(() => alert("Review Submitted!"));
+    }
+
+    function submitContact() {
+        const name = document.getElementById('msg-name').value;
+        const phone = document.getElementById('msg-ph').value;
+        const wa = document.getElementById('msg-wa').value;
+        const msg = document.getElementById('msg-text').value;
+        if(!name || !wa) return alert("Fields required");
+        db.collection('users').doc(uid).collection('messages').add({ name, phone, wa, message: msg, time: new Date().toISOString() })
+        .then(() => alert("Message Sent!"));
+    }
+
+    function scrollToContact() { document.getElementById('contact-area').scrollIntoView({behavior: 'smooth'}); }
+</script>
 </body>
 </html>
