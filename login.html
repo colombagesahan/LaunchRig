@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>System Access | LaunchRig</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <style>
+        body { background: #050505; color: white; font-family: 'Inter', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin:0; }
+        .login-box { text-align: center; border: 1px solid #333; padding: 50px; border-radius: 12px; background: #121212; width: 350px; }
+        h2 { margin-bottom: 10px; }
+        p { color: #888; margin-bottom: 30px; font-size: 0.9rem; }
+        button { background: #66fcf1; color: black; border: none; padding: 12px 20px; width: 100%; font-weight: bold; cursor: pointer; border-radius: 4px; transition: 0.2s; }
+        button:hover { background: white; }
+    </style>
+</head>
+<body>
+    <div class="login-box">
+        <h2 style="color:#66fcf1">LAUNCHRIG</h2>
+        <p>Authenticate to access command center</p>
+        <button onclick="login()">Login with Google</button>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDpX2VMlYkH7AqzXS0mpQKRoXbELvpE6Ms",
+            authDomain: "launchrig.firebaseapp.com",
+            projectId: "launchrig",
+            storageBucket: "launchrig.firebasestorage.app",
+            messagingSenderId: "995178193380",
+            appId: "1:995178193380:web:ed68979e012b76dc3ca7f1",
+            measurementId: "G-YN3DKL1R4G"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        function login() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider).then(async (result) => {
+                const user = result.user;
+                // Check if Founder exists in DB
+                const docRef = db.collection('active_businesses').doc(user.uid); // Using UID as Doc ID for Founder Profile
+                const doc = await docRef.get();
+
+                if (!doc.exists) {
+                    // Create New Founder Profile
+                    await docRef.set({
+                        ownerUid: user.uid,
+                        email: user.email,
+                        planStatus: 'trial',
+                        createdAt: new Date().toISOString(),
+                        walletBalance: 0,
+                        billingCycleEnd: new Date(Date.now() + 30*24*60*60*1000).toISOString() // 30 Days free bill cycle
+                    });
+                }
+                window.location.href = "launcher.html";
+            }).catch(e => alert(e.message));
+        }
+    </script>
+</body>
+</html>
