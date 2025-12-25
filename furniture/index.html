@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Loading Market...</title> <!-- Dynamic Title -->
+    <meta name="theme-color" content="#E65100">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="icon.png">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- FIREBASE -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+
+    <style>
+        :root {
+            /* DYNAMIC THEME VARIABLES - Will be overridden by JS */
+            --primary: #FF6D00; 
+            --primary-light: #FF9E80; 
+            --secondary: #3E2723; 
+            --gold: #FFC107; 
+            --bg-body: #FFF8E1; 
+            --surface: #FFFFFF; 
+            --shadow-card: 0 10px 25px rgba(62, 39, 35, 0.15); 
+            --font: 'Poppins', sans-serif;
+            --radius: 15px; 
+            --green-verified: #2E7D32; 
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+        body { margin: 0; padding: 0; font-family: var(--font); background: var(--bg-body); color: var(--secondary); padding-bottom: 80px; overflow-x: hidden; }
+        a { text-decoration: none; color: inherit; }
+
+        /* NAV */
+        nav {
+            position: fixed; top: 0; width: 100%; z-index: 1000;
+            background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(10px);
+            padding: 15px 5%; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+        }
+        .logo { font-size: 1.3rem; font-weight: 800; color: var(--primary); display: flex; align-items: center; gap: 10px; }
+        .logo img { height: 32px; }
+        
+        /* HERO */
+        .hero {
+            margin-top: 60px; padding: 50px 5%; text-align: center;
+            background: linear-gradient(135deg, #FFF3E0 0%, #FFFFFF 100%);
+            border-bottom-left-radius: 40px; border-bottom-right-radius: 40px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+        }
+        h1 { font-size: 2.5rem; line-height: 1.2; margin-bottom: 20px; color: var(--secondary); }
+        h1 span { color: var(--primary); }
+        p.sub { font-size: 1rem; color: #5D4037; margin-bottom: 30px; line-height: 1.6; }
+
+        .cta-group { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
+        .btn { 
+            padding: 12px 28px; border-radius: 50px; font-weight: 700; font-size: 1rem;
+            border: none; cursor: pointer; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 10px;
+        }
+        .btn-primary { background: var(--primary); color: white; box-shadow: 0 6px 20px rgba(0,0,0,0.2); }
+        .btn-primary:hover { transform: translateY(-3px); opacity: 0.9; }
+        .btn-outline { border: 2px solid var(--primary); color: var(--primary); background: transparent; }
+        .btn-outline:hover { background: var(--primary); color: white; transform: translateY(-3px); }
+
+        /* FEED */
+        .filters { display: flex; gap: 12px; overflow-x: auto; padding: 25px 5%; scrollbar-width: none; }
+        .filters::-webkit-scrollbar { display: none; }
+        .chip { 
+            padding: 10px 20px; background: var(--surface); border: 1px solid #ddd; border-radius: 30px; 
+            white-space: nowrap; font-size: 0.9rem; color: var(--secondary); cursor: pointer; transition: all 0.3s ease;
+        }
+        .chip.active { 
+            background: var(--primary); color: white; border-color: var(--primary); 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); transform: translateY(-2px);
+        }
+
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px; padding: 0 5%; }
+        
+        .card { 
+            background: var(--surface); border-radius: var(--radius); overflow: hidden; 
+            box-shadow: var(--shadow-card); position: relative; cursor: pointer;
+            transition: transform 0.3s ease; border: 1px solid rgba(0,0,0,0.05);
+        }
+        .card:hover { transform: translateY(-8px); }
+        .card-img { 
+            width: 100%; height: 180px; object-fit: cover; background: #eee; border-bottom: 1px solid #f0f0f0; 
+        }
+        .verified-badge { 
+            position: absolute; top: 12px; right: 12px; background: rgba(255,255,255,0.95);
+            padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 800; 
+            color: var(--green-verified); display: flex; align-items: center; gap: 6px; 
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1); text-transform: uppercase;
+        }
+        .card-body { padding: 15px; }
+        .promo { font-size: 0.75rem; color: #D84315; margin-bottom: 5px; font-weight: 700; min-height: 18px; line-height: 1.3;}
+        .card-title { font-weight: 700; font-size: 1.05rem; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--secondary); }
+        .card-seller { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: #795548; margin-bottom: 10px; }
+        .card-seller img { 
+            width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 2px solid #eee;
+        }
+        .price { font-weight: 800; color: var(--primary); font-size: 1.2rem; }
+        .card .btn-primary { padding: 6px 12px; font-size: 0.8rem; border-radius: 8px; width: auto; }
+
+        /* FOOTER */
+        footer {
+            background: var(--secondary); color: #D7CCC8; padding: 40px 5%;
+            text-align: center; font-size: 0.9rem; margin-top: 50px;
+            border-top-left-radius: 40px; border-top-right-radius: 40px;
+        }
+        footer .footer-logo {
+            font-size: 1.8rem; font-weight: 800; color: white;
+            margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px;
+        }
+        footer .footer-logo img { height: 40px; }
+        footer p { margin: 5px 0; line-height: 1.6; color: #BCAAA4; }
+        footer .social-links a { color: white; font-size: 1.5rem; margin: 0 10px; }
+        footer .social-links a:hover { color: var(--primary); }
+
+        @media (max-width: 350px) {
+            .hero { padding: 30px 10px; }
+            h1 { font-size: 1.8rem; }
+            .grid { grid-template-columns: 1fr; }
+        }
+        @media (min-width: 900px) {
+            .grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 30px; }
+            .hero { padding: 60px 8%; }
+            nav { padding: 15px 8%; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div class="logo"><img src="icon.png" onerror="this.style.display='none'"> <span>Store</span></div>
+        <a href="dashboard.html" class="btn btn-primary" style="padding: 8px 16px; font-size: 0.8rem;">Seller Login</a>
+    </nav>
+
+    <section class="hero">
+        <h1 id="hero-title">Furnish Your <br><span>Dream Home</span></h1>
+        <p class="sub">The best marketplace to find verified local sellers.</p>
+        
+        <div class="cta-group">
+            <a href="#feed" class="btn btn-primary"><i class="fa-solid fa-magnifying-glass"></i> Find Items</a>
+            <a href="dashboard.html" class="btn btn-outline"><i class="fa-solid fa-store"></i> Start Selling</a>
+        </div>
+    </section>
+
+    <div id="feed" class="filters">
+        <div class="chip active" onclick="filter('All', this)">All</div>
+        <div class="chip" onclick="filter('Living Room', this)">Living Room</div>
+        <div class="chip" onclick="filter('Bedroom', this)">Bedroom</div>
+        <div class="chip" onclick="filter('Dining', this)">Dining</div>
+        <div class="chip" onclick="filter('Office', this)">Office</div>
+        <div class="chip" onclick="filter('Outdoor', this)">Outdoor</div>
+        <div class="chip" onclick="filter('Kitchen', this)">Kitchen</div>
+        <div class="chip" onclick="filter('Bathroom', this)">Bathroom</div>
+        <div class="chip" onclick="filter('Other', this)">Other</div>
+    </div>
+
+    <div id="grid" class="grid">
+        <div style="grid-column:1/-1; text-align:center; padding:50px;">
+            <i class="fa-solid fa-spinner fa-spin fa-2x" style="color:var(--primary)"></i>
+        </div>
+    </div>
+
+    <footer>
+        <div class="footer-logo">
+            <img src="icon.png" onerror="this.style.display='none'"> <span>Store</span>
+        </div>
+        <p>Your one-stop platform for the finest products.</p>
+        <div class="social-links" style="margin-top: 20px;">
+            <a href="#"><i class="fab fa-facebook-f"></i></a>
+            <a href="#"><i class="fab fa-instagram"></i></a>
+        </div>
+        <p style="margin-top: 20px;">&copy; <span id="current-year"></span>. All rights reserved.</p>
+    </footer>
+
+    <script>
+        document.getElementById('current-year').innerText = new Date().getFullYear();
+
+        // 1. LAUNCHRIG CONFIG
+        const firebaseConfig = {
+            apiKey: "AIzaSyDpX2VMlYkH7AqzXS0mpQKRoXbELvpE6Ms",
+            authDomain: "launchrig.firebaseapp.com",
+            projectId: "launchrig",
+            storageBucket: "launchrig.firebasestorage.app",
+            messagingSenderId: "995178193380",
+            appId: "1:995178193380:web:ed68979e012b76dc3ca7f1",
+            measurementId: "G-YN3DKL1R4G"
+        };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // 2. WHITE LABEL LOGIC
+        const params = new URLSearchParams(window.location.search);
+        const bizId = params.get('bid'); 
+        let allProducts = [];
+
+        // Apply Branding immediately
+        if(bizId) {
+            db.collection('active_businesses').doc(bizId).get().then(doc => {
+                if(doc.exists) {
+                    const data = doc.data();
+                    // Set Title
+                    document.title = data.brandName || "Marketplace";
+                    document.querySelector('.logo span').innerText = data.brandName;
+                    document.querySelector('.footer-logo span').innerText = data.brandName;
+                    
+                    // Set Colors
+                    if(data.themeColor) {
+                        document.documentElement.style.setProperty('--primary', data.themeColor);
+                        // Simple logic to make a lighter version
+                        document.documentElement.style.setProperty('--primary-light', data.themeColor + '88'); 
+                    }
+                    // Set Logo Image
+                    if(data.logo) {
+                        document.querySelectorAll('img[src="icon.png"]').forEach(img => img.src = data.logo);
+                    }
+                }
+            });
+        }
+
+        // 3. FETCH PRODUCTS (Filtered by Business ID)
+        window.onload = async () => {
+            const grid = document.getElementById('grid');
+            try {
+                // IMPORTANT: In LaunchRig, we only fetch sellers who belong to THIS Business ID
+                let query = db.collection('users').where('role', '==', 'seller');
+                
+                if(bizId) {
+                    query = query.where('parentBizId', '==', bizId);
+                } else {
+                    // Fallback for testing: Show everything if no ID provided
+                    console.log("No Business ID (bid) provided in URL. Showing all.");
+                }
+
+                const snapshot = await query.get();
+                allProducts = [];
+
+                snapshot.forEach(doc => {
+                    const d = doc.data();
+                    if (d.products && d.products.length > 0) {
+                        d.products.forEach(p => {
+                            allProducts.push({
+                                ...p,
+                                sellerId: doc.id,
+                                sellerName: d.shopName || 'Shop',
+                                sellerLogo: d.logo || 'logo.png',
+                                verified: d.isVerified
+                            });
+                        });
+                    }
+                });
+
+                allProducts.sort(() => Math.random() - 0.5);
+                render(allProducts);
+
+            } catch (e) { console.error(e); grid.innerHTML = `<p style="grid-column:1/-1; text-align:center; padding:50px;">Error loading items.</p>`; }
+        };
+
+        function render(items) {
+            const grid = document.getElementById('grid');
+            if(items.length === 0) {
+                grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:40px; color:#777;">No items found.</div>`;
+                return;
+            }
+            // Pass the Business ID to the shop link so branding persists
+            const linkSuffix = bizId ? `&bid=${bizId}` : '';
+            
+            grid.innerHTML = items.map(item => `
+                <div class="card" onclick="location.href='shop.html?id=${item.sellerId}${linkSuffix}'">
+                    ${item.verified ? `<div class="verified-badge"><i class="fa-solid fa-circle-check"></i> Verified</div>` : ''}
+                    <img src="${(item.images && item.images[0]) ? item.images[0] : 'https://via.placeholder.com/150'}" class="card-img" loading="lazy">
+                    <div class="card-body">
+                        <div class="promo">${item.promoText || ''}</div>
+                        <div class="card-title">${item.name}</div>
+                        <div class="card-seller">
+                            <img src="${item.sellerLogo}" onerror="this.src='icon.png'"> ${item.sellerName}
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
+                            <div class="price">Rs. ${parseInt(item.price).toLocaleString()}</div>
+                            <button class="btn btn-primary" style="padding:6px 14px; font-size:0.8rem; border-radius: 8px;">View</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function filter(cat, el) {
+            document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+            if(cat === 'All') render(allProducts);
+            else render(allProducts.filter(i => i.category === cat));
+        }
+    </script>
+</body>
+</html>
