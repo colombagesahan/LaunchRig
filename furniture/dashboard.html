@@ -3,9 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Seller Portal</title>
+    <title>FurnicoHub | Seller Portal</title>
+    
+    <!-- PWA Meta -->
+    <meta name="theme-color" content="#FF6D00">
+    <meta name="mobile-web-app-capable" content="yes">
     <link rel="icon" type="image/png" href="icon.png">
+
+    <!-- Libraries -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet">
 
     <!-- Firebase -->
@@ -13,72 +20,255 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
         :root {
-            /* These will remain default ORANGE unless overridden by Launcher config */
-            --primary: #FF6D00;        
-            --primary-light: #FF9E80;  
-            --accent: #E65100;         
-            --bg-body: #FFF3E0;        
-            --surface: #FFFFFF;        
-            --text: #3E2723;           
-            --green: #2E7D32;          
-            --red: #C62828;            
+            /* --- COLOR PALETTE --- (Updated for Orange/Mahogany) */
+            --primary: #FF6D00;        /* Vivid Orange */
+            --primary-light: #FF9E80;  /* Lighter Orange */
+            --accent: #E65100;         /* Deeper Orange for accents */
+            --bg-body: #FFF3E0;        /* Light Cream */
+            --surface: #FFFFFF;        /* White for cards */
+            --text: #3E2723;           /* Dark Mahogany text */
+            --green: #2E7D32;          /* Darker Green for success */
+            --red: #C62828;            /* Darker Red for danger */
+            --gold: #FFC107;           /* Gold for ratings/highlights */
+            
+            /* Design System */
+            --shadow: 0 8px 24px rgba(62, 39, 35, 0.08); /* Soft shadow for cards */
+            --radius: 16px;            /* Consistent border radius */
             --font: 'Poppins', sans-serif;
-            --sidebar-w: 260px;
+            --sidebar-w: 260px;        /* Width of desktop sidebar */
         }
 
-        * { box-sizing: border-box; outline: none; }
+        * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
         body { margin: 0; padding: 0; font-family: var(--font); background: var(--bg-body); color: var(--text); padding-bottom: 80px; font-size: 14px; }
+        a { text-decoration: none; color: inherit; }
         
+        /* UTILS */
         .hidden { display: none !important; }
-        .btn { width: 100%; padding: 12px; border: none; border-radius: 12px; background: var(--primary); color: white; font-weight: 600; cursor: pointer; margin-bottom: 10px; }
-        .card { background: var(--surface); padding: 20px; border-radius: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 15px; }
-        input, select, textarea { width: 100%; padding: 12px; border: 2px solid #FFE0B2; border-radius: 12px; margin-bottom: 15px; }
+        .flex { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; } /* Added flex-wrap */
+        .space-between { justify-content: space-between; }
+        .col { flex-direction: column; }
+        .center { text-align: center; }
+        .bold { font-weight: 700; }
+        .w-100 { width: 100%; }
+        .mb-1 { margin-bottom: 10px; }
+        .mt-1 { margin-top: 10px; }
+        .text-primary { color: var(--primary); }
+        .text-green { color: var(--green); }
+        .text-red { color: var(--red); }
+
+        /* COMPONENTS */
+        .btn {
+            width: 100%; padding: 12px; border: none; border-radius: 12px;
+            background: var(--primary); color: white; font-weight: 600;
+            cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            font-size: 0.9rem; transition: all 0.2s ease; margin-bottom: 10px;
+            box-shadow: 0 4px 10px rgba(255, 109, 0, 0.2); /* Orange-tinted shadow */
+            text-decoration: none;
+        }
+        .btn:active { transform: scale(0.97); }
+        .btn:disabled { background: #ccc; cursor: not-allowed; box-shadow: none; }
+        .btn-green { background: var(--green); color: white; box-shadow: 0 4px 10px rgba(46, 125, 50, 0.2); }
+        .btn-red { background: var(--red); color: white; box-shadow: 0 4px 10px rgba(198, 40, 40, 0.2); }
+        .btn-sm { padding: 6px 12px; font-size: 0.8rem; width: auto; margin: 0; }
+        .btn-outline { 
+            background: transparent; border: 2px solid var(--primary); color: var(--primary); 
+            box-shadow: none; 
+        }
+        .btn-outline:hover { background: var(--primary-light); color: white; }
+
+        .card {
+            background: var(--surface); padding: 20px; border-radius: var(--radius);
+            box-shadow: var(--shadow); margin-bottom: 15px;
+            border: 1px solid #FFE0B2; /* Lighter border for new theme */
+            animation: slideUp 0.4s ease-out;
+        }
+        .card h3 { color: var(--primary); margin-top: 0; }
+
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; margin-bottom: 6px; font-size: 0.85rem; font-weight: 600; color: #5D4037; }
+        .input-group input, .input-group select, .input-group textarea {
+            width: 100%; padding: 12px; border: 2px solid #FFE0B2; border-radius: 12px;
+            font-family: var(--font); font-size: 0.95rem; background: #FFF; /* White background for input */
+            transition: all 0.3s ease;
+        }
+        .input-group input:focus, .input-group select:focus, .input-group textarea:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(255, 109, 0, 0.2);
+            background: #fff;
+        }
+        /* Fix for Color Input */
+        input[type="color"] { height: 50px; padding: 2px; cursor: pointer; border-radius: 8px; }
+
+        /* FILE UPLOAD */
+        .upload-box {
+            border: 2px dashed #FFCC80; /* Orange dashed border */
+            border-radius: 12px; padding: 20px;
+            text-align: center; cursor: pointer; background: #FFF8E1; /* Light cream background */
+            position: relative; transition: all 0.3s ease;
+            color: #795548;
+        }
+        .upload-box:hover { background: #FFECB3; border-color: var(--primary); }
+        .upload-box img { width: 100%; height: 80px; object-fit: cover; border-radius: 8px; display: none; margin-top: 5px; }
+
+        /* LOGIN SCREEN */
+        #login-ui {
+            height: 100vh; display: flex; flex-direction: column; 
+            align-items: center; justify-content: center; padding: 20px;
+            background: radial-gradient(circle at top right, #FFF3E0 0%, #FFCC80 100%); /* Warm radial gradient */
+        }
+        #login-ui .card h2 { color: var(--primary); }
+
+        /* NAVIGATION */
+        .mobile-header {
+            background: white; padding: 15px 20px; position: sticky; top: 0; z-index: 100;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        .mobile-header .bold { color: var(--primary); display: flex; align-items: center; gap: 8px; }
+        .mobile-header .bold img { height: 28px; }
         
-        /* LAYOUT */
-        #dashboard-ui { display: none; }
+        .tabs-container {
+            width: 100%; overflow-x: auto; background: white; 
+            padding: 10px; display: flex; gap: 8px;
+            scrollbar-width: none; -webkit-overflow-scrolling: touch;
+            border-bottom: 1px solid #FFE0B2; /* Light orange border */
+        }
+        .tabs-container::-webkit-scrollbar { display: none; }
+        .tab-btn {
+            padding: 8px 18px; background: #FFF8E1; border: 1px solid #FFE0B2;
+            border-radius: 20px; white-space: nowrap; cursor: pointer;
+            color: #5D4037; font-size: 0.85rem; display: flex; align-items: center; gap: 6px;
+            transition: all 0.2s ease;
+        }
+        .tab-btn.active { 
+            background: var(--primary); color: white; border-color: var(--primary); 
+            box-shadow: 0 4px 10px rgba(255, 109, 0, 0.3); 
+            transform: translateY(-2px);
+        }
+        .tab-btn:hover:not(.active) { background: #FFECB3; color: var(--primary); }
+
+        /* DESKTOP SIDEBAR */
         @media (min-width: 900px) {
+            .mobile-header { display: none; }
             #dashboard-ui { display: flex; }
-            .tabs-container { width: var(--sidebar-w); height: 100vh; position: fixed; background: white; padding: 20px; }
-            #content-area { margin-left: var(--sidebar-w); padding: 40px; width: 100%; }
+            .tabs-container {
+                flex-direction: column; width: var(--sidebar-w); height: 100vh;
+                position: fixed; left: 0; top: 0; background: white; border-right: 1px solid #FFE0B2;
+                padding: 25px; gap: 8px; border-bottom: none;
+            }
+            .tabs-container::before {
+                content: 'FurnicoHub'; font-size: 1.8rem; font-weight: 800; color: var(--primary);
+                padding: 0 10px 30px; display: block; border-bottom: 1px solid #FFE0B2; margin-bottom: 15px;
+            }
+            .tab-btn { width: 100%; border-radius: 10px; border: none; padding: 14px; justify-content: flex-start; background: transparent; }
+            .tab-btn:hover { background: #FFF3E0; color: var(--primary); }
+            .tab-btn.active { background: var(--primary); color: white; box-shadow: 0 5px 15px rgba(255, 109, 0, 0.2); }
+            #content-area { margin-left: var(--sidebar-w); padding: 40px; width: calc(100% - var(--sidebar-w)); max-width: 1200px; }
         }
-        @media (max-width: 899px) {
-            .tabs-container { overflow-x: auto; white-space: nowrap; display: flex; gap: 10px; padding: 10px; background: white; position: sticky; top: 0; z-index: 99; }
-            .tab-btn { display: inline-block; width: auto; }
+
+        /* 250px RESPONSIVENESS */
+        @media (max-width: 350px) {
+            h3 { font-size: 1.1rem; }
+            .card { padding: 12px; }
+            .btn { font-size: 0.8rem; padding: 10px; }
+            .mobile-header .bold { font-size: 1rem; }
+            .mobile-header .bold img { height: 24px; }
+            .stat-grid { grid-template-columns: 1fr !important; /* Forces single column on very small screens */ }
+            .day-row { flex-direction: column; align-items: flex-start; gap: 5px; }
+            .day-row input, .day-row select { width: 100%; }
+            .input-group label { font-size: 0.8rem; }
+            .input-group input, .input-group select, .input-group textarea { padding: 10px; font-size: 0.85rem; }
+            .upload-box { padding: 15px; font-size: 0.85rem; }
+            .toggle-opt { padding: 5px 10px; font-size: 0.8rem; }
+            .status-badge { font-size: 0.7rem; padding: 4px 10px; }
         }
+
+        /* STATUS & GRID */
+        .status-badge { 
+            padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; 
+            display: inline-flex; align-items: center; gap: 5px; text-transform: uppercase;
+        }
+        .st-verified { background: #E8F5E9; color: var(--green); border: 1px solid var(--green); }
+        .st-pending { background: #FFF3E0; color: #E65100; border: 1px solid #FFCC80; }
+        .st-new { background: #FFE0B2; color: #FF6D00; border: 1px solid #FF9800; }
+        .st-published { background: #E8F5E9; color: var(--green); border: 1px solid var(--green); }
+
+        .stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 20px; }
+        .stat-card { 
+            background: white; padding: 15px; border-radius: 16px; text-align: center; cursor: pointer; 
+            border-bottom: 4px solid transparent; box-shadow: var(--shadow); transition: all 0.2s ease; 
+        }
+        .stat-card:hover { transform: translateY(-5px); box-shadow: 0 12px 28px rgba(62, 39, 35, 0.12); }
+        .stat-card h2 { margin: 0; font-size: 1.8rem; color: var(--secondary); }
+        .stat-card small { color: #777; font-size: 0.85rem; }
+        .stat-card .btn-outline { border-width: 1px; padding: 5px 10px; font-size: 0.75rem; margin-top: 10px; }
+
+        .toggle-switch { display: flex; background: #eee; border-radius: 50px; padding: 4px; width: fit-content; margin: 0 auto 15px; }
+        .toggle-opt { padding: 6px 16px; border-radius: 50px; cursor: pointer; font-size: 0.85rem; font-weight: 600; color: #777; transition: all 0.2s ease; }
+        .toggle-opt.active { background: var(--primary); color: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+
+        .day-row { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #FFE0B2; }
+        .date-chip { 
+            display: inline-flex; align-items: center; background: #FFEBEE; padding: 5px 10px; 
+            border-radius: 20px; margin: 2px; font-size: 0.8rem; color: #C62828; 
+            border: 1px solid #FFCCBC;
+        }
+        
+        /* Category Header in Feed (Marketplace) */
+        .cat-header { 
+            grid-column: 1 / -1; font-weight: 800; color: var(--primary); 
+            margin: 20px 0 10px; border-bottom: 2px solid #FFE0B2; padding-bottom: 5px; 
+            font-size: 1.2rem;
+        }
+
+        @keyframes slideUp { from { opacity:0; transform:translateY(15px); } to { opacity:1; transform:translateY(0); } }
     </style>
 </head>
 <body>
 
-    <!-- LOGIN SCREEN -->
-    <div id="login-ui" style="height:100vh; display:flex; justify-content:center; align-items:center; background:#FFF3E0;">
-        <div class="card" style="text-align:center; width:300px;">
-            <h2 style="color:var(--primary)">Seller Portal</h2>
-            <p>Login to manage your shop</p>
-            <button class="btn" onclick="login()">Login with Google</button>
+    <!-- 1. LOGIN SCREEN -->
+    <div id="login-ui">
+        <div class="card" style="width: 100%; max-width: 350px; text-align: center; padding: 40px 25px;">
+            <img src="logo.png" style="width: 90px; height: 90px; object-fit: cover; border-radius: 50%; border: 4px solid var(--primary); margin-bottom: 20px;">
+            <h2 style="color:var(--primary); margin-bottom: 5px;">Seller Portal</h2>
+            <p style="color:#666; margin-bottom: 30px; line-height: 1.5;">Manage your furniture shop, inventory, and orders.</p>
+            <button class="btn" onclick="login()"><i class="fa-brands fa-google"></i> Login with Google</button>
+            <a href="index.html" class="btn btn-outline" style="margin-top: 10px;">Back to Marketplace</a>
         </div>
     </div>
 
-    <!-- DASHBOARD UI -->
-    <div id="dashboard-ui">
+    <!-- 2. DASHBOARD UI -->
+    <div id="dashboard-ui" class="hidden">
+        <div class="mobile-header">
+            <div class="bold"> 
+                <img src="icon.png" height="28"> FurnicoHub
+            </div>
+            <button class="btn" style="width:auto; padding:6px 14px; margin:0; background:rgba(255, 109, 0, 0.1); color:var(--primary);" onclick="logout()">
+                <i class="fa-solid fa-right-from-bracket"></i> Logout
+            </button>
+        </div>
+
         <div class="tabs-container" id="tabs-nav">
-            <h2 style="color:var(--primary); margin-bottom:20px;">Dashboard</h2>
-            <button class="btn" onclick="switchTab('Dashboard')">Overview</button>
-            <button class="btn" onclick="switchTab('Products')">Products</button>
-            <button class="btn" onclick="switchTab('Profile')">Profile</button>
-            <button class="btn" onclick="switchTab('Orders')">Orders</button>
-            <button class="btn" style="background:#333;" onclick="auth.signOut()">Logout</button>
+            <!-- Injected via JS -->
+            <!-- Desktop Logout for larger screens -->
+            <button class="tab-btn" onclick="logout()" style="margin-top:auto; color:var(--red); display:none;" id="desktop-logout-btn"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
         </div>
 
-        <div id="content-area">
-            <!-- Dynamic Content -->
+        <div id="content-area" style="padding: 20px;">
+            <div style="text-align:center; padding:50px; color:#aaa;">
+                <i class="fa-solid fa-spinner fa-spin fa-2x"></i> Loading content...
+            </div>
         </div>
     </div>
+
+    <iframe id="printFrame" style="display:none;"></iframe>
 
 <script>
-    // 1. LAUNCHRIG CONFIG
+    // --- 1. FIREBASE CONFIG ---
     const firebaseConfig = {
         apiKey: "AIzaSyDpX2VMlYkH7AqzXS0mpQKRoXbELvpE6Ms",
         authDomain: "launchrig.firebaseapp.com",
@@ -95,43 +285,57 @@
 
     let user = null;
     let shopData = {};
+    let shopOrders = [];
+    let shopReviews = [];
+    let shopMessages = []; 
     let currentTab = 'Dashboard';
+    let tempImages = [null, null, null]; 
+    let discountType = 'amount';
+    let marketItems = []; 
 
-    // 2. CHECK URL FOR BUSINESS ID
-    const params = new URLSearchParams(window.location.search);
-    const bizId = params.get('bid'); 
+    // --- CONFIG DATA ---
+    const CATEGORIES = [
+        "Living Room", "Bedroom", "Dining Room", "Kitchen", 
+        "Bathroom", "Study Room", "Kids Room", "Baby Room", 
+        "Outdoor & Garden", "Office", "Other"
+    ];
 
-    // Apply Founder Branding (Color only for dashboard)
-    if(bizId) {
-        db.collection('active_businesses').doc(bizId).get().then(doc => {
-            if(doc.exists) {
-                const d = doc.data();
-                if(d.themeColor) document.documentElement.style.setProperty('--primary', d.themeColor);
-            }
-        });
-    }
+    const TABS = [
+        { id: 'Dashboard', icon: 'fa-chart-pie', text: 'Dashboard' }, 
+        { id: 'Smart POS', icon: 'fa-calculator', text: 'Smart POS' }, 
+        { id: 'Marketplace', icon: 'fa-store', text: 'Marketplace' },    
+        { id: 'Profile', icon: 'fa-user-gear', text: 'Profile' },     
+        { id: 'Get Verified', icon: 'fa-certificate', text: 'Get Verified' }, 
+        { id: 'Open/Close', icon: 'fa-clock', text: 'Open/Close' },     
+        { id: 'Products', icon: 'fa-couch', text: 'Products' },       
+        { id: 'My Webpage', icon: 'fa-globe', text: 'My Webpage' },     
+        { id: 'Orders', icon: 'fa-box-open', text: 'Orders' },      
+        { id: 'Messages', icon: 'fa-comments', text: 'Messages' },    
+        { id: 'Reviews', icon: 'fa-star', text: 'Reviews' }          
+    ];
 
-    // 3. AUTH & LOAD
+    // --- 2. AUTH ---
     auth.onAuthStateChanged(async u => {
         if (u) {
             user = u;
             document.getElementById('login-ui').classList.add('hidden');
-            document.getElementById('dashboard-ui').style.display = 'flex';
+            document.getElementById('dashboard-ui').classList.remove('hidden');
             await loadShopData();
         } else {
             document.getElementById('login-ui').classList.remove('hidden');
-            document.getElementById('dashboard-ui').style.display = 'none';
+            document.getElementById('dashboard-ui').classList.add('hidden');
         }
     });
 
+    // LAUNCHRIG LOGIC: CAPTURE BUSINESS ID ON LOGIN
     function login() { 
         auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).then(async (res) => {
-            // ON SIGN UP: LINK USER TO FOUNDER (bizId)
+            const params = new URLSearchParams(window.location.search);
+            const bizId = params.get('bid');
             if(bizId) {
                 const userRef = db.collection('users').doc(res.user.uid);
                 const doc = await userRef.get();
                 if(!doc.exists) {
-                    // New User -> Save parentBizId
                     await userRef.set({
                         email: res.user.email,
                         role: 'seller',
@@ -143,52 +347,91 @@
             }
         }).catch(e => alert(e.message)); 
     }
+    
+    function logout() { auth.signOut(); }
 
     async function loadShopData() {
         const doc = await db.collection('users').doc(user.uid).get();
         if (doc.exists) {
             shopData = doc.data();
-            // CHECK PARENT CONFIG FOR PAYWALL
+            
+            // === LAUNCHRIG: PAYMENT GATE LOGIC ===
             if(shopData.parentBizId) {
                 const founderDoc = await db.collection('active_businesses').doc(shopData.parentBizId).get();
                 const config = founderDoc.data().config || {};
                 
-                // CHECK TRIAL / SUBSCRIPTION
+                // Branding Override
+                if(founderDoc.data().themeColor) {
+                    document.documentElement.style.setProperty('--primary', founderDoc.data().themeColor);
+                }
+
                 const now = Date.now();
                 const joined = new Date(shopData.joinedAt || now).getTime();
-                const trialDays = config.trialDays || 3;
+                const trialDays = config.vendorTrialDays || 3;
                 const trialMs = trialDays * 24 * 60 * 60 * 1000;
 
+                // LOCK IF TRIAL OVER AND NOT ACTIVE
                 if ((now - joined > trialMs) && shopData.subscriptionStatus !== 'active') {
-                    // === SHOW PAYPAL PAYWALL ===
                     showPaywall(config, founderDoc.data().ownerUid);
-                    return; // STOP LOADING DASHBOARD
+                    return; // Stop loading rest of dashboard
                 }
             }
-            
-            renderContent();
+            // ======================================
+
+            currentTab = shopData.profileCompleted ? 'Dashboard' : 'Profile';
+        } else {
+            // New user setup (Fallback if login didn't catch it)
+            shopData = { 
+                role: 'seller', profileCompleted: false, isVerified: false, products: [], 
+                isOpen: false, emergencyClose: false, schedule: {}, specialDates: [],
+                shopName: user.displayName || 'My Shop', logo: user.photoURL || 'logo.png', 
+                whatsapp: '94' 
+            };
+            await db.collection('users').doc(user.uid).set(shopData);
+            currentTab = 'Profile';
         }
+        
+        // Listeners
+        db.collection('users').doc(user.uid).collection('orders').orderBy('time', 'desc').onSnapshot(snap => {
+            shopOrders = snap.docs.map(d => ({id:d.id, ...d.data()}));
+            if(currentTab === 'Orders' || currentTab === 'Dashboard') renderContent();
+        });
+        db.collection('users').doc(user.uid).collection('reviews').onSnapshot(snap => {
+            shopReviews = snap.docs.map(d => ({id:d.id, ...d.data()}));
+            if(currentTab === 'Reviews' || currentTab === 'Dashboard') renderContent();
+        });
+        db.collection('users').doc(user.uid).collection('messages').orderBy('time', 'desc').onSnapshot(snap => {
+            shopMessages = snap.docs.map(d => ({id:d.id, ...d.data()}));
+            if(currentTab === 'Messages' || currentTab === 'Dashboard') renderContent();
+        });
+        db.collection('users').doc(user.uid).onSnapshot(s => {
+            shopData = s.data();
+            if (currentTab !== 'Login') renderContent(); 
+            renderTabs(); 
+        });
+
+        renderTabs();
+        renderContent();
     }
 
-    // --- 4. THE MONEY LOGIC (Auto Payment) ---
+    // === LAUNCHRIG PAYMENT FUNCTION ===
     function showPaywall(config, founderUid) {
         document.getElementById('dashboard-ui').innerHTML = `
             <div style="height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; background:#f4f4f4;">
                 <h1 style="color:red">Trial Expired</h1>
                 <p>Please pay the platform owner to continue.</p>
-                <h2>$${config.vendorPrice || 15} / Month</h2>
+                <h2>$${config.vendorSubscriptionPrice || 15} / Month</h2>
                 <div id="paypal-button-container" style="margin-top:20px; width:300px;"></div>
             </div>
         `;
 
-        // Inject PayPal Script dynamically using FOUNDER'S Client ID
         const script = document.createElement('script');
         script.src = `https://www.paypal.com/sdk/js?client-id=${config.paypalClientId}&currency=USD`;
         script.onload = () => {
             paypal.Buttons({
                 createOrder: (data, actions) => {
                     return actions.order.create({
-                        purchase_units: [{ amount: { value: config.vendorPrice || 15 } }]
+                        purchase_units: [{ amount: { value: config.vendorSubscriptionPrice || 15 } }]
                     });
                 },
                 onApprove: (data, actions) => {
@@ -202,7 +445,7 @@
                         });
 
                         // 2. ADD DEBT TO FOUNDER (30%)
-                        const fee = (config.vendorPrice || 15) * 0.30;
+                        const fee = (config.vendorSubscriptionPrice || 15) * 0.30;
                         const bizRef = db.collection('active_businesses').doc(shopData.parentBizId);
                         
                         await db.runTransaction(async (t) => {
@@ -220,63 +463,612 @@
         document.body.appendChild(script);
     }
 
-    // --- 5. DASHBOARD TABS (Simple Version) ---
-    function switchTab(t) { currentTab = t; renderContent(); }
-
-    function renderContent() {
-        const c = document.getElementById('content-area');
-        if(currentTab === 'Dashboard') {
-            c.innerHTML = `<h2>Overview</h2><div class="card"><p>Welcome back, ${shopData.shopName || 'Seller'}!</p></div>`;
-        } else if (currentTab === 'Products') {
-            renderProductForm(c);
-        } else if (currentTab === 'Profile') {
-            c.innerHTML = `<div class="card"><h3>Edit Profile</h3><input id="s-name" value="${shopData.shopName||''}" placeholder="Shop Name"><button class="btn" onclick="saveProf()">Save</button></div>`;
+    // --- 3. RENDER SYSTEM ---
+    function renderTabs() {
+        const nav = document.getElementById('tabs-nav');
+        let html = TABS.map(t => 
+            `<button class="tab-btn ${currentTab === t.id ? 'active' : ''}" onclick="switchTab('${t.id}')">
+                <i class="fa-solid ${t.icon}"></i> ${t.text}
+             </button>`
+        ).join('');
+        html += `<button class="tab-btn" onclick="logout()" style="margin-top:auto; color:var(--red);" id="desktop-logout-btn"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>`;
+        nav.innerHTML = html;
+        if (window.innerWidth > 900) {
+            document.getElementById('desktop-logout-btn').style.display = 'flex';
         } else {
-            c.innerHTML = `<div class="card"><h3>Coming Soon</h3></div>`;
+            document.getElementById('desktop-logout-btn').style.display = 'none';
         }
     }
 
-    function renderProductForm(c) {
-        c.innerHTML = `
-            <div class="card">
-                <h3>Add Product</h3>
-                <input id="p-name" placeholder="Product Name">
-                <input id="p-price" type="number" placeholder="Price">
-                <input type="file" id="p-img" onchange="upImg(this)">
-                <input type="hidden" id="p-url">
-                <button class="btn" onclick="addProd()">Save Product</button>
+    function switchTab(id) {
+        if(!shopData.profileCompleted && id !== 'Profile') {
+            alert("Please complete your Profile first to access other features!");
+            currentTab = 'Profile'; 
+            renderTabs();
+        }
+        currentTab = id;
+        renderTabs();
+        renderContent();
+    }
+
+    function renderContent() {
+        const c = document.getElementById('content-area');
+        c.innerHTML = ''; 
+        
+        switch(currentTab) {
+            case 'Dashboard': renderHome(c); break;
+            case 'Smart POS': renderPOS(c); break;
+            case 'Marketplace': renderMarketplace(c); break;
+            case 'Profile': renderProfile(c); break;
+            case 'Get Verified': renderVerify(c); break;
+            case 'Open/Close': renderOpenClose(c); break;
+            case 'Products': renderProducts(c); break;
+            case 'My Webpage': renderWebpage(c); break;
+            case 'Orders': renderOrders(c); break;
+            case 'Messages': renderMessages(c); break;
+            case 'Reviews': renderReviews(c); break;
+            default: c.innerHTML = `<div style="text-align:center; padding:50px; color:#aaa;"><i class="fa-solid fa-triangle-exclamation fa-2x"></i><p>Unknown tab selected.</p></div>`; break;
+        }
+    }
+
+    // --- 1) DASHBOARD (NEW HOME) ---
+    function renderHome(div) {
+        const now = new Date();
+        const today = now.toISOString().split('T')[0]; // Simple YYYY-MM-DD
+        
+        const todaysOrders = shopOrders.filter(o => o.time.includes(today)).length;
+        const pendingReviews = shopReviews.filter(r => r.status !== 'published').length;
+        const unreadMsgs = shopMessages.length; 
+        const isOpen = !shopData.emergencyClose && (shopData.isOpen || false); 
+        
+        const prodCounts = {};
+        (shopData.products || []).forEach(p => { prodCounts[p.category] = (prodCounts[p.category] || 0) + 1; });
+        const prodHtml = Object.keys(prodCounts).map(cat => `<div class="flex space-between" style="border-bottom:1px solid #eee; padding:5px 0;"><span>${cat}</span><b>${prodCounts[cat]}</b></div>`).join('') || '<p style="color:#999; text-align:center;">No products added yet.</p>';
+
+        const path = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
+        const linkSuffix = shopData.parentBizId ? `&bid=${shopData.parentBizId}` : '';
+        const url = `${window.location.origin}${path}/shop.html?id=${user.uid}${linkSuffix}`;
+
+        div.innerHTML = `
+            <div class="card flex space-between" style="background:var(--primary); color:white; border:none; padding:15px 20px;">
+                <div id="live-clock" style="font-size:1.2rem; font-weight:bold;">Loading...</div>
+                <div style="font-size:0.9rem;">${new Date().toDateString()}</div>
             </div>
-            <h3>My Products</h3>
-            <div id="prod-list">${(shopData.products||[]).map(p=>`<div>${p.name} - ${p.price}</div>`).join('')}</div>
+
+            <div class="card flex space-between" style="border-left:5px solid ${isOpen?'var(--green)':'var(--red)'}; padding:15px 20px;">
+                <div>
+                    <h3 style="margin:0; color:${isOpen?'var(--green)':'var(--red)'}">${isOpen ? 'Your shop is Open' : 'Your shop is Closed'}</h3>
+                    <small style="color:#777;">Based on schedule & emergency status</small>
+                </div>
+                <button class="btn btn-sm btn-outline" onclick="switchTab('Open/Close')">Edit Status</button>
+            </div>
+
+            <div class="card" style="padding:15px 20px;">
+                <div class="flex space-between">
+                    <b>Public Webpage</b>
+                    <button class="btn btn-sm btn-outline" onclick="switchTab('My Webpage')">Customize</button>
+                </div>
+                <a href="${url}" target="_blank" class="btn btn-primary mt-1" style="width:100%;"><i class="fa-solid fa-eye"></i> View Your Webpage</a>
+            </div>
+
+            <div class="stat-grid">
+                <div class="stat-card" style="border-bottom:4px solid var(--primary);">
+                    <h2>${todaysOrders}</h2>
+                    <small>Orders Today</small>
+                    <button class="btn btn-sm btn-outline mt-1" onclick="switchTab('Orders')">View Orders</button>
+                </div>
+                <div class="stat-card" style="border-bottom:4px solid var(--gold);">
+                    <h2>${unreadMsgs}</h2>
+                    <small>New Messages</small>
+                    <button class="btn btn-sm btn-outline mt-1" onclick="switchTab('Messages')">Read Messages</button>
+                </div>
+                <div class="stat-card" style="border-bottom:4px solid var(--green);">
+                    <h2>${shopReviews.length}</h2>
+                    <small>${pendingReviews} Pending Reviews</small>
+                    <button class="btn btn-sm btn-outline mt-1" onclick="switchTab('Reviews')">Manage Reviews</button>
+                </div>
+                <div class="stat-card" style="border-bottom:4px solid var(--accent);">
+                    <h2>${(shopData.products||[]).length}</h2>
+                    <small>Total Products</small>
+                    <button class="btn btn-sm btn-outline mt-1" onclick="switchTab('Products')">View Products</button>
+                </div>
+            </div>
+
+            <div class="card" style="padding:15px 20px;">
+                <div class="flex space-between mb-1">
+                    <h3>Products by Category</h3>
+                    <button class="btn btn-sm btn-outline" onclick="switchTab('Products')">Manage Products</button>
+                </div>
+                ${prodHtml}
+            </div>
+        `;
+        
+        if(window.clockInterval) clearInterval(window.clockInterval);
+        window.clockInterval = setInterval(() => {
+            const el = document.getElementById('live-clock');
+            if(el) el.innerText = new Date().toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+        }, 1000);
+    }
+
+    // --- 2) SMART POS (Renamed) ---
+    function renderPOS(div) {
+        div.innerHTML = `
+            <div class="card">
+                <h3><i class="fa-solid fa-calculator"></i> Smart POS</h3>
+                <p style="color:#666; margin-bottom: 20px;">Quickly generate invoices for in-store sales.</p>
+                <div class="input-group">
+                    <label>Select Product</label>
+                    <select id="pos-item" onchange="calcPos()">
+                        <option value="0|Select">Select...</option>
+                        ${(shopData.products||[]).map(p => `<option value="${p.price}|${p.name}">${p.name} - Rs.${p.price}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="input-group"><label>Customer Name</label><input id="pos-cust" placeholder="Optional"></div>
+                
+                <div class="input-group">
+                    <label>Discount Type</label>
+                    <div class="toggle-switch">
+                        <div class="toggle-opt ${discountType==='amount'?'active':''}" onclick="setDiscType('amount')">Rs. Amount</div>
+                        <div class="toggle-opt ${discountType==='percent'?'active':''}" onclick="setDiscType('percent')">% Percent</div>
+                    </div>
+                    <input type="number" id="pos-disc" value="0" oninput="calcPos()" placeholder="Enter discount value">
+                </div>
+                
+                <div class="text-center" style="margin:20px 0; background:#FFF8E1; padding:15px; border-radius:12px;">
+                    <small>Total Payable</small><br>
+                    <span style="font-size:1.8rem; font-weight:800; color:var(--primary);" id="pos-total">Rs. 0</span>
+                </div>
+                <button class="btn btn-green" onclick="printInv()"><i class="fa-solid fa-print"></i> Generate Invoice & Print</button>
+            </div>
+        `;
+    }
+    
+    function setDiscType(type) {
+        discountType = type;
+        renderPOS(document.getElementById('content-area')); 
+        calcPos();
+    }
+
+    function calcPos() {
+        const val = document.getElementById('pos-item').value.split('|')[0];
+        const price = parseInt(val) || 0;
+        const discVal = parseInt(document.getElementById('pos-disc').value) || 0;
+        let final = 0;
+        if (discountType === 'amount') final = price - discVal;
+        else final = price - (price * (discVal / 100));
+        document.getElementById('pos-total').innerText = "Rs. " + Math.max(0, final).toLocaleString();
+    }
+
+    function printInv() {
+        const [price, name] = document.getElementById('pos-item').value.split('|');
+        if(name === 'Select') { alert("Please select a product first."); return; }
+        const custName = document.getElementById('pos-cust').value || "Customer";
+        const total = document.getElementById('pos-total').innerText;
+        const discType = discountType === 'amount' ? 'Rs. ' : '% ';
+        const discVal = document.getElementById('pos-disc').value || '0';
+
+        const printContent = `
+            <style>
+                body { font-family: 'Poppins', sans-serif; margin: 0; padding: 10px; color: #3E2723; }
+                h3 { text-align: center; color: #FF6D00; margin-bottom: 5px; }
+                p { margin: 3px 0; font-size: 0.9em; }
+                hr { border: 0; border-top: 1px dashed #ccc; margin: 10px 0; }
+                .item-details { display: flex; justify-content: space-between; margin-bottom: 5px; }
+                .total-line { display: flex; justify-content: space-between; font-weight: bold; font-size: 1.1em; margin-top: 10px; }
+                .text-center { text-align: center; }
+            </style>
+            <body>
+                <h3>${shopData.shopName || 'FurnicoHub Seller'}</h3>
+                <p class="text-center">Invoice for ${custName}</p>
+                <p class="text-center">Date: ${new Date().toLocaleDateString()}</p>
+                <hr>
+                <div class="item-details">
+                    <span>${name}</span>
+                    <span>Rs. ${parseInt(price).toLocaleString()}</span>
+                </div>
+                ${discVal !== '0' ? `<div class="item-details"><span>Discount (${discType}${discVal}):</span> <span>- Rs. ${parseInt(price - parseFloat(total.replace('Rs. ', '').replace(/,/g, ''))).toLocaleString()}</span></div>` : ''}
+                <hr>
+                <div class="total-line">
+                    <span>Total:</span>
+                    <span>${total}</span>
+                </div>
+                <p class="text-center" style="margin-top: 20px;">Thank you for your purchase!</p>
+            </body>
+        `;
+
+        const printFrame = document.getElementById('printFrame');
+        printFrame.contentWindow.document.open();
+        printFrame.contentWindow.document.write(printContent);
+        printFrame.contentWindow.document.close();
+        printFrame.contentWindow.print();
+    }
+
+    // --- 3) MARKETPLACE ---
+    async function renderMarketplace(div) {
+        div.innerHTML = `
+            <div class="card">
+                <h3>Marketplace Feed</h3>
+                <p style="color:#666; margin-bottom: 15px;">Explore furniture from other sellers.</p>
+                <div class="flex mt-1">
+                    <input id="search-shop" placeholder="Search Shop Name..." class="w-100" onkeyup="filterFeed()">
+                    <input id="search-prod" placeholder="Search Product Name..." class="w-100" onkeyup="filterFeed()">
+                </div>
+            </div>
+            <div id="feed-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(150px,1fr)); gap:15px;">
+                <div style="grid-column:1/-1; text-align:center; padding:50px; color:#aaa;">
+                    <i class="fa-solid fa-spinner fa-spin fa-2x"></i> Loading marketplace items...
+                </div>
+            </div>
+        `;
+        
+        try {
+            const snap = await db.collection('users').where('role', '==', 'seller').get();
+            let items = [];
+            snap.forEach(doc => {
+                const d = doc.data();
+                if(d.products && d.products.length > 0) {
+                    d.products.forEach(p => items.push({...p, seller: d.shopName, logo: d.logo, verified: d.isVerified, sellerId: doc.id}));
+                }
+            });
+            window.marketItems = items;
+            window.filterFeed(); 
+        } catch(e) {
+            console.error("Error loading marketplace feed:", e);
+            document.getElementById('feed-grid').innerHTML = '<p class="text-red" style="grid-column:1/-1; text-align:center;">Error loading feed.</p>';
+        }
+    }
+
+    window.filterFeed = function() {
+        const sShop = document.getElementById('search-shop').value.toLowerCase();
+        const sProd = document.getElementById('search-prod').value.toLowerCase();
+        const grid = document.getElementById('feed-grid');
+        if (!grid) return;
+        
+        let filtered = (window.marketItems || []).filter(i => 
+            (sShop === "" || (i.seller && i.seller.toLowerCase().includes(sShop))) &&
+            (sProd === "" || (i.name && i.name.toLowerCase().includes(sProd)))
+        );
+
+        const grouped = {};
+        filtered.forEach(i => {
+            if(!grouped[i.category]) grouped[i.category] = [];
+            grouped[i.category].push(i);
+        });
+
+        let html = '';
+        Object.keys(grouped).forEach(cat => {
+            html += `<div class="cat-header">${cat}</div>`;
+            grouped[cat].forEach(i => {
+                html += `
+                <div class="card" style="padding:0; overflow:hidden; cursor:pointer;" onclick="window.open('shop.html?id=${i.sellerId}','_blank')">
+                    <img src="${(i.images && i.images[0]) ? i.images[0] : 'https://via.placeholder.com/150'}" style="width:100%; height:120px; object-fit:cover;" onerror="this.src='https://via.placeholder.com/150'">
+                    <div style="padding:10px;">
+                        <div class="bold">${i.name}</div>
+                        <div class="text-primary">Rs. ${parseInt(i.price).toLocaleString()}</div>
+                        <div style="font-size:0.75rem; color:#777; margin-top:5px;"><i class="fa-solid fa-store" style="margin-right:5px; color:#FF9800;"></i>${i.seller}</div>
+                    </div>
+                </div>`;
+            });
+        });
+        grid.innerHTML = html || '<p class="text-center w-100" style="color:#777; padding:40px;">No items found.</p>';
+    }
+
+    // --- 4) PROFILE ---
+    function renderProfile(div) {
+        const d = shopData;
+        const lock = d.isVerified ? 'disabled' : '';
+        div.innerHTML = `
+            <div class="card">
+                <h3>Shop Profile</h3>
+                ${d.isVerified ? '<div style="background:#E8F5E9; color:var(--green); padding:10px; border-radius:8px; text-align:center; margin-bottom:15px;">🔒 Locked (Verified) - Changes disabled</div>' : ''}
+                <div class="text-center mb-2 mt-1">
+                    <img id="p-logo" src="${d.logo||'logo.png'}" style="width:100px; height:100px; border-radius:50%; object-fit:cover; border:3px solid var(--primary);">
+                    ${!d.isVerified ? `<br><label class="btn btn-outline" style="width:auto; display:inline-block; margin-top:10px; padding:6px 15px;">Upload Logo <input type="file" hidden onchange="upImg(this, 'logo')"></label>` : ''}
+                </div>
+                <div class="input-group"><label>Shop Name</label><input id="s-name" value="${d.shopName||''}" ${lock} placeholder="Your shop's public name"></div>
+                <div class="input-group"><label>Address</label><textarea id="s-addr" ${lock} rows="3" placeholder="Full address for your shop">${d.address||''}</textarea></div>
+                <div class="input-group"><label>Owner Name</label><input id="s-own" value="${d.ownerName||''}" ${lock} placeholder="Owner's full name"></div>
+                <div class="input-group"><label>NIC</label><input id="s-nic" value="${d.nic||''}" ${lock} placeholder="National Identity Card number"></div>
+                <div class="input-group"><label>Phone (e.g., 0771234567)</label><input type="tel" id="s-ph1" value="${d.phone1||''}" ${lock} placeholder="Primary contact number"></div>
+                <div class="input-group"><label>WhatsApp (e.g., 94771234567 - No +)</label><input type="tel" id="s-wa" value="${d.whatsapp||'94'}" ${lock} placeholder="WhatsApp number without '+', starting with 94"></div>
+                ${!d.isVerified ? `<button class="btn" onclick="saveProfile(this)">Save Profile</button>` : ''}
+            </div>
         `;
     }
 
-    async function addProd() {
+    async function saveProfile(btn) {
+        const shopName = document.getElementById('s-name').value;
+        const address = document.getElementById('s-addr').value;
+        const ownerName = document.getElementById('s-own').value;
+        const nic = document.getElementById('s-nic').value;
+        const phone1 = document.getElementById('s-ph1').value;
+        let whatsapp = document.getElementById('s-wa').value;
+
+        if (!shopName || !address || !ownerName || !nic || !phone1 || !whatsapp) {
+            alert("All profile fields are required.");
+            return;
+        }
+        whatsapp = whatsapp.replace('+', '');
+        if (!whatsapp.startsWith('94') || whatsapp.length < 11) { 
+            alert("WhatsApp number must start with '94' and be a complete number.");
+            return;
+        }
+        
+        const originalText = btn.innerText;
+        btn.innerText = "Saving...";
+        btn.disabled = true;
+
+        try {
+            await db.collection('users').doc(user.uid).update({
+                shopName, address, ownerName, nic, phone1, whatsapp,
+                logo: shopData.temp_logo || shopData.logo || 'logo.png',
+                profileCompleted: true
+            });
+            alert("Profile Saved Successfully!");
+            switchTab('Dashboard');
+        } catch(e) {
+            console.error(e);
+            alert("Error saving profile: " + e.message);
+        } finally {
+            btn.innerText = originalText;
+            btn.disabled = false;
+        }
+    }
+
+    // --- 5) GET VERIFIED ---
+    function renderVerify(div) {
+        if(shopData.isVerified) return div.innerHTML = `<div class="card text-center" style="padding:40px;"><h1 class="text-green"><i class="fa-solid fa-circle-check"></i> Your Shop is Verified!</h1><p style="color:#666;">You now have the official green badge.</p></div>`;
+        
+        div.innerHTML = `
+            <div class="card">
+                <h3>Get Verified (Rs. 5000)</h3>
+                <p style="color:#666; margin-bottom:15px;">Follow these steps to get the official green 'Verified' badge.</p>
+                <button class="btn btn-outline" onclick="printProf()"><i class="fa-solid fa-download"></i> 1. Download Profile PDF</button>
+                <div style="background:#FFF3E0; padding:15px; border-radius:12px; margin:15px 0; border:1px dashed #FFCC80;">
+                    <b>2. Certify Document:</b> Get the downloaded PDF document certified by a Grama Niladhari (GN) or Justice of the Peace (JP).<br><br>
+                    <b>3. Make Payment:</b> Pay Rs. 5000 to the following bank account:<br>
+                    <strong>Bank:</strong> Commercial Bank, Homagama<br>
+                    <strong>Account No:</strong> 8750053306 (Colombage SD)
+                </div>
+                <div class="input-group">
+                    <label>4. Upload Certified Document</label>
+                    <div class="upload-box" onclick="document.getElementById('v-doc').click()">Click to Upload Certified PDF/Image <i class="fa-solid fa-cloud-arrow-up"></i><input type="file" id="v-doc" hidden onchange="upImg(this, 'doc')"></div>
+                    <small id="st-doc" class="hidden text-center" style="color:var(--green); display:block; margin-top:5px;"><i class="fa-solid fa-check-circle"></i> Certified Document Uploaded</small>
+                </div>
+                <div class="input-group">
+                    <label>5. Upload Payment Slip</label>
+                    <div class="upload-box" onclick="document.getElementById('v-slip').click()">Click to Upload Payment Proof <i class="fa-solid fa-cloud-arrow-up"></i><input type="file" id="v-slip" hidden onchange="upImg(this, 'slip')"></div>
+                    <small id="st-slip" class="hidden text-center" style="color:var(--green); display:block; margin-top:5px;"><i class="fa-solid fa-check-circle"></i> Payment Slip Uploaded</small>
+                </div>
+                <button class="btn btn-green" onclick="subVerify(this)"><i class="fa-solid fa-paper-plane"></i> Submit for Review</button>
+            </div>
+        `;
+        if (shopData.temp_doc) document.getElementById('st-doc').classList.remove('hidden');
+        if (shopData.temp_slip) document.getElementById('st-slip').classList.remove('hidden');
+    }
+      
+    function printProf() {
+        const d = shopData;
+        const printWindow = window.open('','','width=600,height=600');
+        printWindow.document.write(`
+            <style>body{font-family:sans-serif;}</style>
+            <h2>FurnicoHub Seller Profile for Certification</h2>
+            <p><b>Shop Name:</b> ${d.shopName}</p>
+            <p><b>Owner:</b> ${d.ownerName}</p>
+            <p><b>NIC:</b> ${d.nic}</p>
+            <hr>
+            <p>Signature: _________________________</p>
+        `);
+        printWindow.document.close();
+        printWindow.print();
+    }
+
+    async function subVerify(btn) {
+        if(!shopData.temp_doc || !shopData.temp_slip) return alert("Please upload documents.");
+        btn.disabled = true;
+        try {
+            await db.collection('admin_requests').add({ 
+                uid: user.uid, shopName: shopData.shopName, doc: shopData.temp_doc, slip: shopData.temp_slip, time: new Date().toISOString()
+            });
+            alert("Application Submitted!");
+            renderVerify(document.getElementById('content-area')); 
+        } catch(e) { console.error(e); alert("Error: " + e.message); } 
+        finally { btn.disabled = false; }
+    }
+
+    // --- 6) OPEN/CLOSE ---
+    function renderOpenClose(div) {
+        const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+        const schedule = shopData.schedule || {};
+        const isEmergency = shopData.emergencyClose || false;
+        
+        let rows = days.map(d => {
+            const s = schedule[d] || {open: true, start: "09:00", end: "20:00"};
+            return `
+            <div class="day-row">
+                <div style="min-width:90px; font-weight:bold; color:var(--secondary);">${d}</div>
+                <select id="st-${d}" class="w-100" style="flex:1;"><option value="open" ${s.open?'selected':''}>Open</option><option value="closed" ${!s.open?'selected':''}>Closed</option></select>
+                <input type="time" id="start-${d}" value="${s.start}" class="w-100" style="flex:1;"> <span style="color:#777;">to</span> <input type="time" id="end-${d}" value="${s.end}" class="w-100" style="flex:1;">
+            </div>`;
+        }).join('');
+
+        div.innerHTML = `
+            <div class="card" style="border:2px solid ${isEmergency?'var(--red)':'var(--green)'}">
+                <h3>Emergency Control</h3>
+                <p class="bold" style="color:${isEmergency?'var(--red)':'var(--green)'}">${isEmergency ? "🔴 CLOSED" : "🟢 OPEN"}</p>
+                <button class="btn btn-${isEmergency?'green':'red'}" onclick="toggleEmergency(!${isEmergency})">${isEmergency?'Re-Open Shop Now':'Close Shop for Today'}</button>
+            </div>
+            <div class="card"><h3>Weekly Schedule</h3>${rows}<button class="btn mt-1" onclick="saveSchedule(this)">Save Settings</button></div>
+        `;
+    }
+
+    async function saveSchedule(btn) {
+        const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+        const schedule = {};
+        days.forEach(d => schedule[d] = {
+            open: document.getElementById(`st-${d}`).value === 'open',
+            start: document.getElementById(`start-${d}`).value,
+            end: document.getElementById(`end-${d}`).value
+        });
+        await db.collection('users').doc(user.uid).update({ schedule });
+        alert("Saved!");
+    }
+
+    async function toggleEmergency(state) {
+        await db.collection('users').doc(user.uid).update({ emergencyClose: state });
+        alert(`Shop is now ${state ? 'CLOSED' : 'OPEN'}`);
+    }
+
+    // --- 7) PRODUCTS ---
+    function renderProducts(div) {
+        tempImages = [null,null,null]; 
+        div.innerHTML = `
+            <div class="card">
+                <h3>Add New Product</h3>
+                <div class="input-group"><label>Images (Max 3)</label>
+                    <div class="flex">
+                        ${[0,1,2].map(i=>`<div class="upload-box" style="padding:10px; flex:1;" onclick="document.getElementById('f-p${i}').click()">
+                            <i class="fa-solid fa-image"></i><br>Img ${i+1}
+                            <input type="file" id="f-p${i}" hidden onchange="upImg(this, 'prod', ${i})">
+                            <img id="prev-p${i}" style="display:none; width:100%; height:60px;">
+                        </div>`).join('')}
+                    </div>
+                </div>
+                <div class="input-group"><label>Category</label><select id="p-cat"><option value="">Select</option>${CATEGORIES.map(c => `<option>${c}</option>`).join('')}</select></div>
+                <div class="input-group"><label>Product Name</label><input id="p-name"></div>
+                <div class="input-group"><label>Description</label><textarea id="p-desc"></textarea></div>
+                <div class="input-group"><label>Price (Rs)</label><input type="number" id="p-price"></div>
+                <div class="input-group"><label>Promo Text</label><input id="p-promo"></div>
+                <button class="btn" onclick="saveProd(this)">Save Product</button>
+            </div>
+            <h3>Inventory</h3>
+            ${(shopData.products||[]).map((p,i)=>`<div class="card flex space-between" style="padding:15px;"><div><b>${p.name}</b><br>Rs.${p.price}</div><button class="btn btn-outline" style="width:auto;" onclick="delProd(${i})">Delete</button></div>`).join('')}
+        `;
+    }
+
+    async function saveProd(btn) {
+        const imgs = tempImages.filter(x=>x);
         const p = {
-            name: document.getElementById('p-name').value,
-            price: document.getElementById('p-price').value,
-            images: [document.getElementById('p-url').value],
-            category: "Living Room", // Default for MVP
-            id: Date.now()
+            id: Date.now(), category: document.getElementById('p-cat').value,
+            name: document.getElementById('p-name').value, desc: document.getElementById('p-desc').value,
+            price: Number(document.getElementById('p-price').value), promoText: document.getElementById('p-promo').value,
+            images: imgs
         };
         const newArr = [...(shopData.products||[]), p];
         await db.collection('users').doc(user.uid).update({products: newArr});
-        alert("Saved!");
-        loadShopData(); // Refresh
+        alert("Product Added!");
+        renderProducts(document.getElementById('content-area'));
     }
 
-    async function saveProf() {
-        await db.collection('users').doc(user.uid).update({ shopName: document.getElementById('s-name').value });
-        alert("Profile Saved");
+    async function delProd(i) {
+        if(!confirm("Delete?")) return;
+        const updated = shopData.products.filter((_, index) => index !== i);
+        await db.collection('users').doc(user.uid).update({products: updated});
+        alert("Deleted.");
     }
 
-    // Simple Image Upload (Base64 for MVP speed, better to use Storage in Prod)
-    function upImg(el) {
-        const file = el.files[0];
+    // --- 8) MY WEBPAGE ---
+    function renderWebpage(div) {
+        const path = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
+        // APPEND BIZID TO PUBLIC LINK IF EXISTS
+        const linkSuffix = shopData.parentBizId ? `&bid=${shopData.parentBizId}` : '';
+        const url = `${window.location.origin}${path}/shop.html?id=${user.uid}${linkSuffix}`;
+        const sl = shopData.socialLinks || {};
+
+        div.innerHTML = `
+            <div class="card text-center">
+                <h3>Your Public Shop Link</h3>
+                <input value="${url}" readonly class="w-100 text-center mb-1" style="background:#eee; padding:10px;">
+                <button class="btn btn-outline" onclick="navigator.clipboard.writeText('${url}'); alert('Copied!')">Copy Link</button>
+            </div>
+            <div class="card">
+                <h3>Social Media Links</h3>
+                <div class="input-group"><label>Facebook</label><input id="sl-fb" value="${sl.fb||''}" onchange="saveWeb('socialLinks.fb')"></div>
+                <div class="input-group"><label>Instagram</label><input id="sl-ig" value="${sl.ig||''}" onchange="saveWeb('socialLinks.ig')"></div>
+            </div>
+        `;
+    }
+    
+    function saveWeb(field) {
+        let updateData = {};
+        updateData[`socialLinks.${field.split('.')[1]}`] = document.getElementById('sl-' + field.split('.')[1]).value;
+        db.collection('users').doc(user.uid).update(updateData);
+    }
+
+    // --- 9) ORDERS ---
+    function renderOrders(div) {
+        div.innerHTML = shopOrders.length ? shopOrders.map(o => `
+            <div class="card">
+                <b>${o.custName}</b> - <span class="text-primary">Rs. ${o.total}</span><br>
+                <small>${new Date(o.time).toLocaleString()}</small><br>
+                <a href="https://wa.me/${o.custWa}" target="_blank" class="btn btn-green btn-sm" style="margin-top:10px;">WhatsApp Customer</a>
+            </div>`).join('') : '<p class="text-center">No Orders.</p>';
+    }
+
+    // --- 10) MESSAGES ---
+    function renderMessages(div) {
+        div.innerHTML = shopMessages.length ? shopMessages.map(m => `
+            <div class="card">
+                <b>${m.name}</b> <small>${new Date(m.time).toLocaleString()}</small><br>
+                <p>"${m.message}"</p>
+                <a href="https://wa.me/${m.wa}" target="_blank" class="btn btn-green btn-sm">Reply</a>
+            </div>`).join('') : '<p class="text-center">No Messages.</p>';
+    }
+
+    // --- 11) REVIEWS ---
+    function renderReviews(div) {
+        div.innerHTML = shopReviews.length ? shopReviews.map(r => `
+            <div class="card">
+                <b>${r.name}</b> ${'★'.repeat(r.stars)}<br>
+                <i>"${r.text}"</i><br>
+                <div style="margin-top:10px;">
+                    ${r.status!=='published' ? `<button class="btn btn-green btn-sm" onclick="pubRev('${r.id}')">Publish</button>`:''}
+                    <button class="btn btn-outline btn-sm" onclick="delRev('${r.id}')">Delete</button>
+                </div>
+            </div>`).join('') : '<p class="text-center">No Reviews.</p>';
+    }
+
+    function pubRev(id) { db.collection('users').doc(user.uid).collection('reviews').doc(id).update({status:'published'}); }
+    function delRev(id) { db.collection('users').doc(user.uid).collection('reviews').doc(id).delete(); }
+
+    // --- UTILS ---
+    function upImg(input, type, idx) {
+        const file = input.files[0];
         const reader = new FileReader();
-        reader.onload = e => document.getElementById('p-url').value = e.target.result; // Saving Base64 string for simplicity in testing
         reader.readAsDataURL(file);
+        reader.onload = e => {
+            const img = new Image();
+            img.src = e.target.result;
+            img.onload = () => {
+                const cvs = document.createElement('canvas');
+                let w = img.width, h = img.height;
+                if (w > 800) { h *= 800/w; w = 800; }
+                cvs.width=w; cvs.height=h;
+                cvs.getContext('2d').drawImage(img,0,0,w,h);
+                const dataUrl = cvs.toDataURL('image/jpeg',0.8);
+                const path = `img/${user.uid}/${Date.now()}`;
+                
+                const statusEl = type==='doc'?document.getElementById('st-doc') : (type==='slip'?document.getElementById('st-slip') : null);
+                if(statusEl) statusEl.innerText = "Uploading...";
+
+                storage.ref(path).putString(dataUrl, 'data_url').then(s => s.ref.getDownloadURL().then(url => {
+                    if(type==='logo') { shopData.temp_logo=url; document.getElementById('p-logo').src=url; }
+                    else if(type==='doc') { shopData.temp_doc=url; document.getElementById('st-doc').innerText="Uploaded"; }
+                    else if(type==='slip') { shopData.temp_slip=url; document.getElementById('st-slip').innerText="Uploaded"; }
+                    else if(type==='prod') { tempImages[idx]=url; document.getElementById(`prev-p${idx}`).src=url; document.getElementById(`prev-p${idx}`).style.display='block'; }
+                }));
+            }
+        }
     }
+
+    // Adjust desktop logout button visibility on window resize
+    window.addEventListener('resize', () => {
+        if (window.innerWidth > 900) {
+            document.getElementById('desktop-logout-btn').style.display = 'flex';
+        } else {
+            document.getElementById('desktop-logout-btn').style.display = 'none';
+        }
+    });
 </script>
 </body>
 </html>
