@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Seller Portal</title>
+    <link rel="icon" type="image/png" href="icon.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
+
+    <style>
+        :root {
+            /* These will remain default ORANGE unless overridden by Launcher config */
+            --primary: #FF6D00;        
+            --primary-light: #FF9E80;  
+            --accent: #E65100;         
+            --bg-body: #FFF3E0;        
+            --surface: #FFFFFF;        
+            --text: #3E2723;           
+            --green: #2E7D32;          
+            --red: #C62828;            
+            --font: 'Poppins', sans-serif;
+            --sidebar-w: 260px;
+        }
+
+        * { box-sizing: border-box; outline: none; }
+        body { margin: 0; padding: 0; font-family: var(--font); background: var(--bg-body); color: var(--text); padding-bottom: 80px; font-size: 14px; }
+        
+        .hidden { display: none !important; }
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 12px; background: var(--primary); color: white; font-weight: 600; cursor: pointer; margin-bottom: 10px; }
+        .card { background: var(--surface); padding: 20px; border-radius: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 15px; }
+        input, select, textarea { width: 100%; padding: 12px; border: 2px solid #FFE0B2; border-radius: 12px; margin-bottom: 15px; }
+        
+        /* LAYOUT */
+        #dashboard-ui { display: none; }
+        @media (min-width: 900px) {
+            #dashboard-ui { display: flex; }
+            .tabs-container { width: var(--sidebar-w); height: 100vh; position: fixed; background: white; padding: 20px; }
+            #content-area { margin-left: var(--sidebar-w); padding: 40px; width: 100%; }
+        }
+        @media (max-width: 899px) {
+            .tabs-container { overflow-x: auto; white-space: nowrap; display: flex; gap: 10px; padding: 10px; background: white; position: sticky; top: 0; z-index: 99; }
+            .tab-btn { display: inline-block; width: auto; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- LOGIN SCREEN -->
+    <div id="login-ui" style="height:100vh; display:flex; justify-content:center; align-items:center; background:#FFF3E0;">
+        <div class="card" style="text-align:center; width:300px;">
+            <h2 style="color:var(--primary)">Seller Portal</h2>
+            <p>Login to manage your shop</p>
+            <button class="btn" onclick="login()">Login with Google</button>
+        </div>
+    </div>
+
+    <!-- DASHBOARD UI -->
+    <div id="dashboard-ui">
+        <div class="tabs-container" id="tabs-nav">
+            <h2 style="color:var(--primary); margin-bottom:20px;">Dashboard</h2>
+            <button class="btn" onclick="switchTab('Dashboard')">Overview</button>
+            <button class="btn" onclick="switchTab('Products')">Products</button>
+            <button class="btn" onclick="switchTab('Profile')">Profile</button>
+            <button class="btn" onclick="switchTab('Orders')">Orders</button>
+            <button class="btn" style="background:#333;" onclick="auth.signOut()">Logout</button>
+        </div>
+
+        <div id="content-area">
+            <!-- Dynamic Content -->
+        </div>
+    </div>
+
+<script>
+    // 1. LAUNCHRIG CONFIG
+    const firebaseConfig = {
+        apiKey: "AIzaSyDpX2VMlYkH7AqzXS0mpQKRoXbELvpE6Ms",
+        authDomain: "launchrig.firebaseapp.com",
+        projectId: "launchrig",
+        storageBucket: "launchrig.firebasestorage.app",
+        messagingSenderId: "995178193380",
+        appId: "1:995178193380:web:ed68979e012b76dc3ca7f1",
+        measurementId: "G-YN3DKL1R4G"
+    };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    const storage = firebase.storage();
+
+    let user = null;
+    let shopData = {};
+    let currentTab = 'Dashboard';
+
+    // 2. CHECK URL FOR BUSINESS ID
+    const params = new URLSearchParams(window.location.search);
+    const bizId = params.get('bid'); 
+
+    // Apply Founder Branding (Color only for dashboard)
+    if(bizId) {
+        db.collection('active_businesses').doc(bizId).get().then(doc => {
+            if(doc.exists) {
+                const d = doc.data();
+                if(d.themeColor) document.documentElement.style.setProperty('--primary', d.themeColor);
+            }
+        });
+    }
+
+    // 3. AUTH & LOAD
+    auth.onAuthStateChanged(async u => {
+        if (u) {
+            user = u;
+            document.getElementById('login-ui').classList.add('hidden');
+            document.getElementById('dashboard-ui').style.display = 'flex';
+            await loadShopData();
+        } else {
+            document.getElementById('login-ui').classList.remove('hidden');
+            document.getElementById('dashboard-ui').style.display = 'none';
+        }
+    });
+
+    function login() { 
+        auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).then(async (res) => {
+            // ON SIGN UP: LINK USER TO FOUNDER (bizId)
+            if(bizId) {
+                const userRef = db.collection('users').doc(res.user.uid);
+                const doc = await userRef.get();
+                if(!doc.exists) {
+                    // New User -> Save parentBizId
+                    await userRef.set({
+                        email: res.user.email,
+                        role: 'seller',
+                        parentBizId: bizId,
+                        joinedAt: new Date().toISOString(),
+                        subscriptionStatus: 'trial'
+                    }, {merge: true});
+                }
+            }
+        }).catch(e => alert(e.message)); 
+    }
+
+    async function loadShopData() {
+        const doc = await db.collection('users').doc(user.uid).get();
+        if (doc.exists) {
+            shopData = doc.data();
+            // CHECK PARENT CONFIG FOR PAYWALL
+            if(shopData.parentBizId) {
+                const founderDoc = await db.collection('active_businesses').doc(shopData.parentBizId).get();
+                const config = founderDoc.data().config || {};
+                
+                // CHECK TRIAL / SUBSCRIPTION
+                const now = Date.now();
+                const joined = new Date(shopData.joinedAt || now).getTime();
+                const trialDays = config.trialDays || 3;
+                const trialMs = trialDays * 24 * 60 * 60 * 1000;
+
+                if ((now - joined > trialMs) && shopData.subscriptionStatus !== 'active') {
+                    // === SHOW PAYPAL PAYWALL ===
+                    showPaywall(config, founderDoc.data().ownerUid);
+                    return; // STOP LOADING DASHBOARD
+                }
+            }
+            
+            renderContent();
+        }
+    }
+
+    // --- 4. THE MONEY LOGIC (Auto Payment) ---
+    function showPaywall(config, founderUid) {
+        document.getElementById('dashboard-ui').innerHTML = `
+            <div style="height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; background:#f4f4f4;">
+                <h1 style="color:red">Trial Expired</h1>
+                <p>Please pay the platform owner to continue.</p>
+                <h2>$${config.vendorPrice || 15} / Month</h2>
+                <div id="paypal-button-container" style="margin-top:20px; width:300px;"></div>
+            </div>
+        `;
+
+        // Inject PayPal Script dynamically using FOUNDER'S Client ID
+        const script = document.createElement('script');
+        script.src = `https://www.paypal.com/sdk/js?client-id=${config.paypalClientId}&currency=USD`;
+        script.onload = () => {
+            paypal.Buttons({
+                createOrder: (data, actions) => {
+                    return actions.order.create({
+                        purchase_units: [{ amount: { value: config.vendorPrice || 15 } }]
+                    });
+                },
+                onApprove: (data, actions) => {
+                    return actions.order.capture().then(async (details) => {
+                        // 1. UNLOCK VENDOR
+                        const nextMonth = new Date();
+                        nextMonth.setDate(nextMonth.getDate() + 30);
+                        await db.collection('users').doc(user.uid).update({
+                            subscriptionStatus: 'active',
+                            subscriptionExpiry: nextMonth.toISOString()
+                        });
+
+                        // 2. ADD DEBT TO FOUNDER (30%)
+                        const fee = (config.vendorPrice || 15) * 0.30;
+                        const bizRef = db.collection('active_businesses').doc(shopData.parentBizId);
+                        
+                        await db.runTransaction(async (t) => {
+                            const d = await t.get(bizRef);
+                            const current = d.data().walletBalance || 0;
+                            t.update(bizRef, { walletBalance: current + fee });
+                        });
+
+                        alert("Payment Success! Dashboard Unlocked.");
+                        location.reload();
+                    });
+                }
+            }).render('#paypal-button-container');
+        };
+        document.body.appendChild(script);
+    }
+
+    // --- 5. DASHBOARD TABS (Simple Version) ---
+    function switchTab(t) { currentTab = t; renderContent(); }
+
+    function renderContent() {
+        const c = document.getElementById('content-area');
+        if(currentTab === 'Dashboard') {
+            c.innerHTML = `<h2>Overview</h2><div class="card"><p>Welcome back, ${shopData.shopName || 'Seller'}!</p></div>`;
+        } else if (currentTab === 'Products') {
+            renderProductForm(c);
+        } else if (currentTab === 'Profile') {
+            c.innerHTML = `<div class="card"><h3>Edit Profile</h3><input id="s-name" value="${shopData.shopName||''}" placeholder="Shop Name"><button class="btn" onclick="saveProf()">Save</button></div>`;
+        } else {
+            c.innerHTML = `<div class="card"><h3>Coming Soon</h3></div>`;
+        }
+    }
+
+    function renderProductForm(c) {
+        c.innerHTML = `
+            <div class="card">
+                <h3>Add Product</h3>
+                <input id="p-name" placeholder="Product Name">
+                <input id="p-price" type="number" placeholder="Price">
+                <input type="file" id="p-img" onchange="upImg(this)">
+                <input type="hidden" id="p-url">
+                <button class="btn" onclick="addProd()">Save Product</button>
+            </div>
+            <h3>My Products</h3>
+            <div id="prod-list">${(shopData.products||[]).map(p=>`<div>${p.name} - ${p.price}</div>`).join('')}</div>
+        `;
+    }
+
+    async function addProd() {
+        const p = {
+            name: document.getElementById('p-name').value,
+            price: document.getElementById('p-price').value,
+            images: [document.getElementById('p-url').value],
+            category: "Living Room", // Default for MVP
+            id: Date.now()
+        };
+        const newArr = [...(shopData.products||[]), p];
+        await db.collection('users').doc(user.uid).update({products: newArr});
+        alert("Saved!");
+        loadShopData(); // Refresh
+    }
+
+    async function saveProf() {
+        await db.collection('users').doc(user.uid).update({ shopName: document.getElementById('s-name').value });
+        alert("Profile Saved");
+    }
+
+    // Simple Image Upload (Base64 for MVP speed, better to use Storage in Prod)
+    function upImg(el) {
+        const file = el.files[0];
+        const reader = new FileReader();
+        reader.onload = e => document.getElementById('p-url').value = e.target.result; // Saving Base64 string for simplicity in testing
+        reader.readAsDataURL(file);
+    }
+</script>
+</body>
+</html>
